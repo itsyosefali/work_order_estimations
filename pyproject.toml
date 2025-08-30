@@ -1,0 +1,20 @@
+[project]
+name = "work_order_estimations"
+authors = [
+    { name = "itsyosfeali", email = "joeyxjoey123@gmail.com"}
+]
+description = "Paper consumption and cost estimation tool for printing and manufacturing"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    # "frappe~=15.0.0" # Installed and managed by bench.
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+# These dependencies are only installed when developer mode is enabled
+[tool.bench.dev-dependencies]
+# package_name = "~=1.1.0"

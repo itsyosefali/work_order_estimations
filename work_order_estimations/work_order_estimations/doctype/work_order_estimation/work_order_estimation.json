@@ -41,6 +41,9 @@
   "margin_amount",
   "status",
   "notes",
+  "quotation_reference",
+  "sales_order_reference",
+  "work_order_reference",
   "dashboard_tab",
   "custom_dashboard"
  ],
@@ -268,8 +271,9 @@
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Status",
-   "options": "Draft\nSent\nConverted to Quotation\nCancelled",
+   "options": "Draft\nSent\nConverted to Quotation\nSales Order Created\nWork Order Created\nProduction Completed\nCancelled",
    "read_only": 1
   },
   {
@@ -277,6 +281,30 @@
    "fieldname": "notes",
    "fieldtype": "Text Editor",
    "label": "Notes"
+  },
+  {
+   "description": "Reference to created Quotation",
+   "fieldname": "quotation_reference",
+   "fieldtype": "Link",
+   "label": "Quotation Reference",
+   "options": "Quotation",
+   "read_only": 1
+  },
+  {
+   "description": "Reference to created Sales Order",
+   "fieldname": "sales_order_reference",
+   "fieldtype": "Link",
+   "label": "Sales Order Reference",
+   "options": "Sales Order",
+   "read_only": 1
+  },
+  {
+   "description": "Reference to created Work Order",
+   "fieldname": "work_order_reference",
+   "fieldtype": "Link",
+   "label": "Work Order Reference",
+   "options": "Work Order",
+   "read_only": 1
   },
   {
    "fieldname": "dashboard_tab",
@@ -294,7 +322,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-31 18:54:20.770618",
+ "modified": "2025-08-31 22:52:10.844456",
  "modified_by": "Administrator",
  "module": "Work Order Estimations",
  "name": "Work Order Estimation",

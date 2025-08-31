@@ -1,4 +1,3 @@
-# Work Order Estimations
+# Work Order Estimation - Complete ERPNext Integration
 
-A comprehensive paper consumption and cost estimation tool for printing and manufacturing companies, built specifically for ERPNext.
-
+A comprehensive ERPNext integration for paper production work order estimations, featuring automatic calculations, quotation integration, production workflow, and stock management.

@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe import _
+import json
 
 class WorkOrderEstimation(Document):
     def validate(self):
@@ -11,6 +12,18 @@ class WorkOrderEstimation(Document):
         self.calculate_paper_metrics()
         self.calculate_costs()
         self.update_status()
+        self.validate_processes()
+    
+    def validate_processes(self):
+        """Validate that all processes have required fields"""
+        if self.estimation_processes:
+            for process in self.estimation_processes:
+                if not process.process_type:
+                    frappe.throw(_("Process Type is required for all processes"))
+                if not process.workstation:
+                    frappe.throw(_("Workstation is required for all processes"))
+                if not process.rate:
+                    frappe.throw(_("Rate is required for all processes"))
     
     def calculate_paper_metrics(self):
         """Calculate paper weight and consumption metrics"""
@@ -45,6 +58,15 @@ class WorkOrderEstimation(Document):
     
     def calculate_costs(self):
         """Calculate all cost-related fields"""
+        # Auto-fetch rate per kg from Item Master if not set
+        if not self.rate_per_kg and self.paper_type:
+            try:
+                item = frappe.get_doc("Item", self.paper_type)
+                if item.valuation_rate:
+                    self.rate_per_kg = item.valuation_rate
+            except:
+                pass
+        
         # Paper costs
         if self.total_weight_kg and self.rate_per_kg:
             rate_per_kg = float(self.rate_per_kg) if isinstance(self.rate_per_kg, str) else self.rate_per_kg
@@ -82,6 +104,10 @@ class WorkOrderEstimation(Document):
             self.margin_amount = self.total_cost * (profit_margin / 100)
         else:
             self.margin_amount = 0
+        
+        # Calculate sales price if not set
+        if not self.sales_price and self.total_cost and self.margin_amount:
+            self.sales_price = self.total_cost + self.margin_amount
     
     def update_status(self):
         """Update status based on current state"""
@@ -97,5 +123,272 @@ class WorkOrderEstimation(Document):
         """Actions when document is cancelled"""
         self.status = "Cancelled"
         self.save()
+    
+    def create_quotation(self):
+        """Create Quotation from Work Order Estimation"""
+        try:
+            if self.status != "Sent":
+                frappe.throw(_("Only sent estimations can be converted to quotations."))
+            
+            # Create quotation
+            quotation = frappe.new_doc("Quotation")
+            quotation.party_name = self.client_name
+            quotation.quotation_to = "Customer"
+            quotation.transaction_date = frappe.utils.today()
+            quotation.valid_till = self.delivery_date
+            quotation.work_order_estimation = self.name
+            
+            # Add items
+            quantity = float(self.quantity) if isinstance(self.quantity, str) else self.quantity
+            sales_price = float(self.sales_price) if isinstance(self.sales_price, str) else self.sales_price
+            
+            quotation.append("items", {
+                "item_code": self.paper_type,
+                "qty": quantity,
+                "rate": sales_price or self.cost_per_unit,
+                "description": f"Printing job: {self.project_name}",
+                "work_order_estimation": self.name
+            })
+            
+            quotation.insert()
+            
+            # Update status
+            self.status = "Converted to Quotation"
+            self.quotation_reference = quotation.name
+            self.save()
+            
+            frappe.msgprint(_("Quotation {0} created successfully!").format(quotation.name))
+            return quotation.name
+            
+        except Exception as e:
+            # Log error with shorter message to avoid truncation
+            error_msg = f"Quotation creation failed for {self.name}: {str(e)[:100]}"
+            frappe.log_error(error_msg, "Work Order Estimation Error")
+            frappe.throw(_("Error creating quotation: {0}").format(str(e)))
+    
+    def create_sales_order_from_quotation(self, quotation_name):
+        """Create Sales Order when Quotation is accepted"""
+        try:
+            quotation = frappe.get_doc("Quotation", quotation_name)
+            if quotation.status != "Open":
+                frappe.throw(_("Quotation must be in 'Open' status to create Sales Order"))
+            
+            # Create Sales Order
+            sales_order = frappe.new_doc("Sales Order")
+            sales_order.customer = quotation.party_name
+            sales_order.delivery_date = self.delivery_date
+            sales_order.work_order_estimation = self.name
+            sales_order.quotation = quotation_name
+            
+            # Add items
+            for item in quotation.items:
+                sales_order.append("items", {
+                    "item_code": item.item_code,
+                    "qty": item.qty,
+                    "rate": item.rate,
+                    "description": item.description,
+                    "work_order_estimation": self.name
+                })
+            
+            sales_order.insert()
+            
+            # Update status
+            self.status = "Sales Order Created"
+            self.sales_order_reference = sales_order.name
+            self.save()
+            
+            frappe.msgprint(_("Sales Order {0} created successfully!").format(sales_order.name))
+            return sales_order.name
+            
+        except Exception as e:
+            # Log error with shorter message to avoid truncation
+            error_msg = f"Sales Order creation failed for {self.name}: {str(e)[:100]}"
+            frappe.log_error(error_msg, "Work Order Estimation Error")
+            frappe.throw(_("Error creating sales order: {0}").format(str(e)))
+    
+    def create_work_order_from_sales_order(self, sales_order_name):
+        """Create Work Order from Sales Order for in-house production"""
+        try:
+            sales_order = frappe.get_doc("Sales Order", sales_order_name)
+            if sales_order.status not in ["Draft", "To Deliver and Bill"]:
+                frappe.throw(_("Sales Order must be in 'Draft' or 'To Deliver and Bill' status to create Work Order"))
+            
+            # Check if BOM exists for paper type
+            bom = self.get_bom_for_paper_type()
+            if not bom:
+                frappe.throw(_("No BOM found for paper type {0}. Please create a BOM first.").format(self.paper_type))
+            
+            # Create Work Order
+            work_order = frappe.new_doc("Work Order")
+            work_order.production_item = self.paper_type
+            work_order.qty = self.quantity
+            work_order.bom_no = bom.name
+            work_order.sales_order = sales_order_name
+            work_order.work_order_estimation = self.name
+            work_order.planned_start_date = frappe.utils.today()
+            work_order.planned_end_date = self.delivery_date
+            work_order.fg_warehouse = "Finished Goods - PM"  # Default warehouse
+            work_order.source_warehouse = "Stores - PM"  # Default warehouse
+            
+            # Add operations from estimation processes
+            for process in self.estimation_processes:
+                work_order.append("operations", {
+                    "operation": process.process_type,
+                    "workstation": process.workstation,
+                    "time_in_mins": 60,  # Default time, can be customized
+                    "description": process.details
+                })
+            
+            work_order.insert()
+            
+            # Update status
+            self.status = "Work Order Created"
+            self.work_order_reference = work_order.name
+            self.save()
+            
+            frappe.msgprint(_("Work Order {0} created successfully!").format(work_order.name))
+            return work_order.name
+            
+        except Exception as e:
+            # Log error with shorter message to avoid truncation
+            error_msg = f"Work Order creation failed for {self.name}: {str(e)[:100]}"
+            frappe.log_error(error_msg, "Work Order Estimation Error")
+            frappe.throw(_("Error creating work order: {0}").format(str(e)))
+    
+    def get_bom_for_paper_type(self):
+        """Get BOM for the paper type"""
+        print(self.paper_type)
+        try:
+            bom_list = frappe.get_all("BOM", 
+                filters={
+                    "item": self.paper_type,
+                    "is_active": 1,
+                    "is_default": 1
+                },
+                fields=["name"],
+                limit=1
+            )
+            if bom_list:
+                return frappe.get_doc("BOM", bom_list[0].name)
+            else:
+                # Try to find any active BOM
+                bom_list = frappe.get_all("BOM", 
+                    filters={
+                        "item": self.paper_type,
+                        "is_active": 1
+                    },
+                    fields=["name"],
+                    limit=1
+                )
+                
+                if bom_list:
+                    return frappe.get_doc("BOM", bom_list[0].name)
+            
+            return None
+            
+        except Exception as e:
+            # Log error with shorter message to avoid truncation
+            error_msg = f"BOM retrieval failed for {self.paper_type}: {str(e)[:100]}"
+            frappe.log_error(error_msg, "Work Order Estimation Error")
+            return None
+    
+    def create_stock_entries_from_work_order(self, work_order_name):
+        """Create Stock Entries when Work Order is completed"""
+        try:
+            work_order = frappe.get_doc("Work Order", work_order_name)
+            if work_order.status != "Completed":
+                frappe.throw(_("Work Order must be completed to create Stock Entries"))
+            
+            # Create Stock Entry for consumption of raw materials
+            consumption_entry = frappe.new_doc("Stock Entry")
+            consumption_entry.stock_entry_type = "Material Issue for Manufacture"
+            consumption_entry.work_order = work_order_name
+            consumption_entry.work_order_estimation = self.name
+            consumption_entry.from_warehouse = work_order.source_warehouse
+            
+            # Add raw materials from BOM
+            bom = frappe.get_doc("BOM", work_order.bom_no)
+            for item in bom.items:
+                consumption_entry.append("items", {
+                    "item_code": item.item_code,
+                    "qty": item.qty * work_order.qty,
+                    "s_warehouse": work_order.source_warehouse,
+                    "basic_rate": item.rate or 0
+                })
+            
+            consumption_entry.insert()
+            
+            # Create Stock Entry for finished goods
+            finished_goods_entry = frappe.new_doc("Stock Entry")
+            finished_goods_entry.stock_entry_type = "Manufacture"
+            finished_goods_entry.work_order = work_order_name
+            finished_goods_entry.work_order_estimation = self.name
+            finished_goods_entry.to_warehouse = work_order.fg_warehouse
+            
+            # Add finished goods
+            finished_goods_entry.append("items", {
+                "item_code": work_order.production_item,
+                "qty": work_order.qty,
+                "t_warehouse": work_order.fg_warehouse,
+                "basic_rate": self.cost_per_unit or 0
+            })
+            
+            # Add waste if any
+            if self.waste_kg and self.waste_kg > 0:
+                finished_goods_entry.append("items", {
+                    "item_code": "Waste Paper",  # Create this item in Item Master
+                    "qty": self.waste_kg,
+                    "t_warehouse": "Waste - WOS",  # Create this warehouse
+                    "basic_rate": 0
+                })
+            
+            finished_goods_entry.insert()
+            
+            # Update status
+            self.status = "Production Completed"
+            self.save()
+            
+            frappe.msgprint(_("Stock Entries created successfully for Work Order {0}").format(work_order_name))
+            return {
+                "consumption_entry": consumption_entry.name,
+                "finished_goods_entry": finished_goods_entry.name
+            }
+            
+        except Exception as e:
+            # Log error with shorter message to avoid truncation
+            error_msg = f"Stock Entry creation failed for {self.name}: {str(e)[:100]}"
+            frappe.log_error(error_msg, "Work Order Estimation Error")
+            frappe.throw(_("Error creating stock entries: {0}").format(str(e)))
+    
+    def generate_pdf_report(self):
+        """Generate professional PDF report"""
+        try:
+            # This will use the print format
+            pdf_url = frappe.get_url_to_print(self.doctype, self.name)
+            return pdf_url
+        except Exception as e:
+            # Log error with shorter message to avoid truncation
+            error_msg = f"PDF generation failed for {self.name}: {str(e)[:100]}"
+            frappe.log_error(error_msg, "Work Order Estimation Error")
+            frappe.throw(_("Error generating PDF report: {0}").format(str(e)))
+    
+    def get_cost_breakdown(self):
+        """Get detailed cost breakdown for dashboard"""
+        breakdown = {
+            "paper_cost": self.total_paper_cost or 0,
+            "process_cost": 0,
+            "total_cost": self.total_cost or 0,
+            "profit_margin": self.profit_margin or 0,
+            "margin_amount": self.margin_amount or 0,
+            "sales_price": self.sales_price or 0,
+            "cost_per_unit": self.cost_per_unit or 0
+        }
+        
+        if self.estimation_processes:
+            for process in self.estimation_processes:
+                if process.total_cost:
+                    breakdown["process_cost"] += process.total_cost
+        
+        return breakdown
     
 

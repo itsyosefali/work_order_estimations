@@ -1,0 +1,73 @@
+{
+ "actions": [],
+ "creation": "2025-08-30 13:30:00",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "process_type",
+  "details",
+  "rate",
+  "qty",
+  "total_cost"
+ ],
+ "fields": [
+  {
+   "description": "Type of production process",
+   "fieldname": "process_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Process Type",
+   "options": "Printing\nCutting\nFolding\nFinishing\nBinding\nLamination\nEmbossing\nDie Cutting\nPackaging\nOther",
+   "reqd": 1
+  },
+  {
+   "description": "Additional details about the process",
+   "fieldname": "details",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Process Details"
+  },
+  {
+   "description": "Cost per unit for this process",
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate per Unit",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "Quantity for this process (usually same as job quantity)",
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Quantity",
+   "reqd": 1
+  },
+  {
+   "description": "Total cost for this process (Rate \u00d7 Quantity)",
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Total Cost",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-30 13:42:44.719106",
+ "modified_by": "Administrator",
+ "module": "Work Order Estimations",
+ "name": "Estimation Process",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,454 @@
+<!-- Copyright (c) 2025, Ebkar Technology & Management Solutions and contributors -->
+<!-- For license information, please see license.txt -->
+
+<style>
+/* Custom styling for Work Order Estimation */
+.work-order-estimation {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header styling */
+.estimation-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.estimation-header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.estimation-header .subtitle {
+    margin-top: 8px;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+/* Section styling */
+.estimation-section {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.estimation-section h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+/* Field grouping */
+.field-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.field-item {
+    background: white;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.field-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.field-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.field-value {
+    color: #212529;
+    font-size: 14px;
+}
+
+/* Calculation highlights */
+.calculation-highlight {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.calculation-highlight .highlight-value {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 5px 0;
+}
+
+.calculation-highlight .highlight-label {
+    font-size: 12px;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Process table styling */
+.process-table {
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.process-table .table-header {
+    background: #495057;
+    color: white;
+    padding: 12px 15px;
+    font-weight: 600;
+}
+
+.process-table .table-row {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e9ecef;
+    display: grid;
+    grid-template-columns: 2fr 3fr 1fr 1fr 1fr;
+    gap: 15px;
+    align-items: center;
+}
+
+.process-table .table-row:last-child {
+    border-bottom: none;
+}
+
+.process-table .table-row:nth-child(even) {
+    background: #f8f9fa;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-draft {
+    background: #6c757d;
+    color: white;
+}
+
+.status-sent {
+    background: #007bff;
+    color: white;
+}
+
+.status-converted {
+    background: #28a745;
+    color: white;
+}
+
+.status-cancelled {
+    background: #dc3545;
+    color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .field-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .process-table .table-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .estimation-header {
+        padding: 15px;
+    }
+    
+    .estimation-section {
+        padding: 15px;
+    }
+}
+
+/* Animation for calculations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.calculation-animation {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* Custom button styling */
+.custom-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 5px;
+}
+
+.custom-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.custom-btn.secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+
+.custom-btn.success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.custom-btn.danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+</style>
+
+<div class="work-order-estimation">
+    <!-- Header Section -->
+    <div class="estimation-header">
+        <h1>📋 Work Order Estimation</h1>
+        <div class="subtitle">
+            <strong>Project:</strong> {{ doc.project_name or "New Project" }} | 
+            <strong>Client:</strong> {{ doc.client_name or "Select Client" }} | 
+            <strong>Status:</strong> 
+            <span class="status-badge status-{{ doc.status.lower() if doc.status else 'draft' }}">
+                {{ doc.status or "Draft" }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Job Details Section -->
+    <div class="estimation-section">
+        <h3>👥 Job Details</h3>
+        <div class="field-group">
+            <div class="field-item">
+                <div class="field-label">Client Name</div>
+                <div class="field-value">{{ doc.client_name or "Not specified" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Project Name</div>
+                <div class="field-value">{{ doc.project_name or "Not specified" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Delivery Date</div>
+                <div class="field-value">{{ frappe.format_date(doc.delivery_date) if doc.delivery_date else "Not specified" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Urgency Level</div>
+                <div class="field-value">{{ doc.urgency_level or "Medium" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paper Specifications Section -->
+    <div class="estimation-section">
+        <h3>📄 Paper Specifications</h3>
+        <div class="field-group">
+            <div class="field-item">
+                <div class="field-label">Quantity (Pieces)</div>
+                <div class="field-value">{{ doc.quantity or "0" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">GSM</div>
+                <div class="field-value">{{ doc.gsm or "0" }} g/m²</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Dimensions</div>
+                <div class="field-value">{{ doc.length_cm or "0" }} × {{ doc.width_cm or "0" }} cm</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Finish</div>
+                <div class="field-value">{{ doc.finish or "Uncoated" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Waste Percentage</div>
+                <div class="field-value">{{ doc.waste_percentage or "10" }}%</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Paper Type</div>
+                <div class="field-value">{{ doc.paper_type or "Not specified" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paper Calculations Section -->
+    <div class="estimation-section">
+        <h3>🧮 Paper Calculations</h3>
+        
+        <!-- Key Calculation Highlights -->
+        {% if doc.weight_per_piece_kg %}
+        <div class="calculation-highlight calculation-animation">
+            <div class="highlight-label">Weight per Piece</div>
+            <div class="highlight-value">{{ frappe.format_number(doc.weight_per_piece_kg, 6) }} kg</div>
+        </div>
+        {% endif %}
+        
+        <div class="field-group">
+            <div class="field-item">
+                <div class="field-label">Pieces per KG</div>
+                <div class="field-value">{{ frappe.format_number(doc.pieces_per_kg, 2) if doc.pieces_per_kg else "0" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Net Weight</div>
+                <div class="field-value">{{ frappe.format_number(doc.net_weight_kg, 3) if doc.net_weight_kg else "0" }} kg</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Waste Weight</div>
+                <div class="field-value">{{ frappe.format_number(doc.waste_kg, 3) if doc.waste_kg else "0" }} kg</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Total Weight</div>
+                <div class="field-value">{{ frappe.format_number(doc.total_weight_kg, 3) if doc.total_weight_kg else "0" }} kg</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Cost per Piece</div>
+                <div class="field-value">{{ frappe.format_currency(doc.cost_per_piece) if doc.cost_per_piece else "0" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Total Paper Cost</div>
+                <div class="field-value">{{ frappe.format_currency(doc.total_paper_cost) if doc.total_paper_cost else "0" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Production Processes Section -->
+    <div class="estimation-section">
+        <h3>⚙️ Production Processes</h3>
+        {% if doc.estimation_processes %}
+        <div class="process-table">
+            <div class="table-header">
+                <div class="table-row">
+                    <div>Process Type</div>
+                    <div>Details</div>
+                    <div>Rate</div>
+                    <div>Qty</div>
+                    <div>Total Cost</div>
+                </div>
+            </div>
+            {% for process in doc.estimation_processes %}
+            <div class="table-row">
+                <div>{{ process.process_type }}</div>
+                <div>{{ process.details or "" }}</div>
+                <div>{{ frappe.format_currency(process.rate) if process.rate else "0" }}</div>
+                <div>{{ process.qty or "0" }}</div>
+                <div>{{ frappe.format_currency(process.total_cost) if process.total_cost else "0" }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 20px; color: #6c757d;">
+            No production processes added yet. Add processes to calculate total costs.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Cost Analysis Section -->
+    <div class="estimation-section">
+        <h3>💰 Cost Analysis</h3>
+        
+        <!-- Total Cost Highlight -->
+        {% if doc.total_cost %}
+        <div class="calculation-highlight calculation-animation" style="background: linear-gradient(135deg, #fd7e14 0%, #e83e8c 100%);">
+            <div class="highlight-label">Total Project Cost</div>
+            <div class="highlight-value">{{ frappe.format_currency(doc.total_cost) }}</div>
+        </div>
+        {% endif %}
+        
+        <div class="field-group">
+            <div class="field-item">
+                <div class="field-label">Paper Cost</div>
+                <div class="field-value">{{ frappe.format_currency(doc.total_paper_cost) if doc.total_paper_cost else "0" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Process Cost</div>
+                <div class="field-value">{{ frappe.format_currency(doc.total_cost - doc.total_paper_cost) if doc.total_cost and doc.total_paper_cost else "0" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Cost per Unit</div>
+                <div class="field-value">{{ frappe.format_currency(doc.cost_per_unit) if doc.cost_per_unit else "0" }}</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Profit Margin</div>
+                <div class="field-value">{{ doc.profit_margin or "25" }}%</div>
+            </div>
+            <div class="field-item">
+                <div class="field-label">Margin Amount</div>
+                <div class="field-value">{{ frappe.format_currency(doc.margin_amount) if doc.margin_amount else "0" }}</div>
+            </div>
+            {% if doc.sales_price %}
+            <div class="field-item">
+                <div class="field-label">Sales Price</div>
+                <div class="field-value">{{ frappe.format_currency(doc.sales_price) }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Notes Section -->
+    {% if doc.notes %}
+    <div class="estimation-section">
+        <h3>📝 Notes & Specifications</h3>
+        <div style="background: white; padding: 20px; border-radius: 6px; border-left: 4px solid #667eea;">
+            {{ doc.notes }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div style="text-align: center; margin: 30px 0;">
+        <button class="custom-btn" onclick="refreshCalculations()">
+            🔄 Refresh Calculations
+        </button>
+        <button class="custom-btn secondary" onclick="convertToQuotation()">
+            📋 Convert to Quotation
+        </button>
+        <button class="custom-btn success" onclick="generatePDF()">
+            📄 Generate PDF
+        </button>
+        {% if doc.status == "Draft" %}
+        <button class="custom-btn danger" onclick="cancelEstimation()">
+            ❌ Cancel
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 12px;">
+        <p><strong>Prepared by:</strong> {{ doc.owner or "System" }} | 
+        <strong>Created:</strong> {{ frappe.format_date(doc.creation) if doc.creation else "N/A" }} | 
+        <strong>Modified:</strong> {{ frappe.format_date(doc.modified) if doc.modified else "N/A" }}</p>
+        <p><strong>Company:</strong> Ebkar – Technology & Management Solutions</p>
+    </div>
+</div>
+
+

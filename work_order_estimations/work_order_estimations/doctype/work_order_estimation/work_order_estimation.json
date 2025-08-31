@@ -1,0 +1,365 @@
+{
+ "actions": [
+  {
+   "action": "Refresh Calculations",
+   "action_type": "Server Action",
+   "label": "Refresh Calculations"
+  },
+  {
+   "action": "Convert to Quotation",
+   "action_type": "Server Action",
+   "label": "Convert to Quotation"
+  },
+  {
+   "action": "Generate PDF Report",
+   "action_type": "Server Action",
+   "label": "Generate PDF Report"
+  }
+ ],
+ "allow_copy": 1,
+ "allow_rename": 1,
+ "autoname": "format:EST-{####}",
+ "creation": "2025-08-30 13:26:28.914560",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "job_details_section",
+  "client_name",
+  "project_name",
+  "delivery_date",
+  "urgency_level",
+  "sales_price",
+  "paper_specifications_section",
+  "quantity",
+  "gsm",
+  "length_cm",
+  "width_cm",
+  "finish",
+  "waste_percentage",
+  "paper_type",
+  "rate_per_kg",
+  "paper_calculations_section",
+  "weight_per_piece_kg",
+  "pieces_per_kg",
+  "net_weight_kg",
+  "waste_kg",
+  "total_weight_kg",
+  "cost_per_piece",
+  "total_paper_cost",
+  "processes_section",
+  "estimation_processes",
+  "cost_analysis_section",
+  "total_cost",
+  "cost_per_unit",
+  "profit_margin",
+  "margin_amount",
+  "status",
+  "notes",
+  "dashboard_tab",
+  "custom_dashboard"
+ ],
+ "fields": [
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:!doc.docstatus",
+   "fieldname": "job_details_section",
+   "fieldtype": "Section Break",
+   "label": "Job Details"
+  },
+  {
+   "fieldname": "client_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Client Name",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Project Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Delivery Date",
+   "reqd": 1
+  },
+  {
+   "default": "Medium",
+   "fieldname": "urgency_level",
+   "fieldtype": "Select",
+   "label": "Urgency Level",
+   "options": "Low\nMedium\nHigh\nUrgent"
+  },
+  {
+   "description": "Expected selling price to client",
+   "fieldname": "sales_price",
+   "fieldtype": "Currency",
+   "label": "Sales Price"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:!doc.docstatus",
+   "fieldname": "paper_specifications_section",
+   "fieldtype": "Tab Break",
+   "label": "Paper Specifications"
+  },
+  {
+   "description": "Number of pieces to be produced",
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Quantity (Pieces)",
+   "reqd": 1
+  },
+  {
+   "description": "Paper weight in grams per square meter",
+   "fieldname": "gsm",
+   "fieldtype": "Int",
+   "label": "GSM (Grams per Square Meter)",
+   "reqd": 1
+  },
+  {
+   "description": "Length of paper in centimeters",
+   "fieldname": "length_cm",
+   "fieldtype": "Float",
+   "label": "Length (cm)",
+   "reqd": 1
+  },
+  {
+   "description": "Width of paper in centimeters",
+   "fieldname": "width_cm",
+   "fieldtype": "Float",
+   "label": "Width (cm)",
+   "reqd": 1
+  },
+  {
+   "default": "Uncoated",
+   "fieldname": "finish",
+   "fieldtype": "Select",
+   "label": "Finish",
+   "options": "Matte\nGlossy\nSemi-Gloss\nUncoated\nCoated"
+  },
+  {
+   "default": "10",
+   "description": "Expected waste percentage during production",
+   "fieldname": "waste_percentage",
+   "fieldtype": "Percent",
+   "label": "Waste Percentage"
+  },
+  {
+   "description": "Select paper type from Item Master",
+   "fieldname": "paper_type",
+   "fieldtype": "Link",
+   "label": "Paper Type",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "description": "Cost per kilogram of paper",
+   "fieldname": "rate_per_kg",
+   "fieldtype": "Currency",
+   "label": "Rate per KG",
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:!doc.docstatus",
+   "fieldname": "paper_calculations_section",
+   "fieldtype": "Tab Break",
+   "label": "Paper Calculations"
+  },
+  {
+   "description": "Calculated weight per piece in kilograms",
+   "fieldname": "weight_per_piece_kg",
+   "fieldtype": "Float",
+   "label": "Weight per Piece (kg)",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "description": "Number of pieces that can be made from 1 kg",
+   "fieldname": "pieces_per_kg",
+   "fieldtype": "Float",
+   "label": "Pieces per KG",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "description": "Total weight needed for production",
+   "fieldname": "net_weight_kg",
+   "fieldtype": "Float",
+   "label": "Net Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "description": "Additional weight for waste allowance",
+   "fieldname": "waste_kg",
+   "fieldtype": "Float",
+   "label": "Waste Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "description": "Total weight including waste",
+   "fieldname": "total_weight_kg",
+   "fieldtype": "Float",
+   "label": "Total Weight (kg)",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "description": "Paper cost per individual piece",
+   "fieldname": "cost_per_piece",
+   "fieldtype": "Currency",
+   "label": "Cost per Piece",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "description": "Total cost for all paper including waste",
+   "fieldname": "total_paper_cost",
+   "fieldtype": "Currency",
+   "label": "Total Paper Cost",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:!doc.docstatus",
+   "fieldname": "processes_section",
+   "fieldtype": "Tab Break",
+   "label": "Production Processes"
+  },
+  {
+   "description": "Add production processes and their costs",
+   "fieldname": "estimation_processes",
+   "fieldtype": "Table",
+   "label": "Estimation Processes",
+   "options": "Estimation Process"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:!doc.docstatus",
+   "fieldname": "cost_analysis_section",
+   "fieldtype": "Tab Break",
+   "label": "Cost Analysis"
+  },
+  {
+   "description": "Total cost including paper and processes",
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "label": "Total Cost",
+   "read_only": 1
+  },
+  {
+   "description": "Total cost per piece produced",
+   "fieldname": "cost_per_unit",
+   "fieldtype": "Currency",
+   "label": "Cost per Unit",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "default": "25",
+   "description": "Desired profit margin percentage",
+   "fieldname": "profit_margin",
+   "fieldtype": "Percent",
+   "label": "Profit Margin (%)"
+  },
+  {
+   "description": "Profit amount based on margin percentage",
+   "fieldname": "margin_amount",
+   "fieldtype": "Currency",
+   "label": "Margin Amount",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nSent\nConverted to Quotation\nCancelled",
+   "read_only": 1
+  },
+  {
+   "description": "Additional notes and specifications",
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard"
+  },
+  {
+   "fieldname": "custom_dashboard",
+   "fieldtype": "HTML",
+   "label": "Custom Dashboard",
+   "description": "Enhanced visual dashboard for the estimation",
+   "read_only": 1,
+   "options": "<div class=\"work-order-estimation\">\n    <div class=\"estimation-header\">\n        <h1>📋 Work Order Estimation Dashboard</h1>\n        <div class=\"subtitle\">\n            <strong>Project:</strong> <span id=\"project-name\">New Project</span> | \n            <strong>Client:</strong> <span id=\"client-name\">Select Client</span> | \n            <strong>Status:</strong> \n            <span id=\"status-badge\" class=\"status-badge status-draft\">Draft</span>\n        </div>\n    </div>\n\n    <div class=\"stats-grid\">\n        <div class=\"stat-card\">\n            <div class=\"stat-icon\">📄</div>\n            <div class=\"stat-value\" id=\"quantity-value\">0</div>\n            <div class=\"stat-label\">Quantity</div>\n        </div>\n        <div class=\"stat-card\">\n            <div class=\"stat-icon\">⚖️</div>\n            <div class=\"stat-value\" id=\"weight-value\">0 kg</div>\n            <div class=\"stat-label\">Total Weight</div>\n        </div>\n        <div class=\"stat-card\">\n            <div class=\"stat-icon\">💰</div>\n            <div class=\"stat-value\" id=\"cost-value\">0</div>\n            <div class=\"stat-label\">Total Cost</div>\n        </div>\n        <div class=\"stat-card\">\n            <div class=\"stat-icon\">📊</div>\n            <div class=\"stat-value\" id=\"margin-value\">25%</div>\n            <div class=\"stat-label\">Profit Margin</div>\n        </div>\n    </div>\n\n    <div id=\"calculation-highlight\" class=\"calculation-highlight\" style=\"display: none;\">\n        <div class=\"highlight-label\">Key Calculation</div>\n        <div class=\"highlight-value\" id=\"weight-per-piece\">Weight per Piece: 0 kg</div>\n        <div class=\"highlight-subtitle\" id=\"dimensions-info\">Based on 0 GSM, 0 × 0 cm</div>\n    </div>\n\n    <div id=\"cost-breakdown\" class=\"cost-breakdown\" style=\"display: none;\">\n        <h3>💰 Cost Breakdown</h3>\n        <div class=\"cost-chart\">\n            <div class=\"cost-bar\">\n                <div class=\"cost-label\">Paper Cost</div>\n                <div class=\"cost-bar-fill\" id=\"paper-cost-bar\" style=\"width: 0%; background: #28a745;\"></div>\n                <div class=\"cost-amount\" id=\"paper-cost-amount\">0</div>\n            </div>\n            <div class=\"cost-bar\">\n                <div class=\"cost-label\">Process Cost</div>\n                <div class=\"cost-bar-fill\" id=\"process-cost-bar\" style=\"width: 0%; background: #007bff;\"></div>\n                <div class=\"cost-amount\" id=\"process-cost-amount\">0</div>\n            </div>\n        </div>\n    </div>\n\n    <div class=\"action-buttons\">\n        <button class=\"custom-btn\" onclick=\"refreshCalculations()\">🔄 Refresh</button>\n        <button class=\"custom-btn secondary\" onclick=\"convertToQuotation()\">📋 Convert to Quote</button>\n        <button class=\"custom-btn success\" onclick=\"generatePDF()\">📄 Generate PDF</button>\n        <button class=\"custom-btn danger\" id=\"cancel-btn\" onclick=\"cancelEstimation()\" style=\"display: none;\">❌ Cancel</button>\n    </div>\n</div>\n\n<style>\n.work-order-estimation { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }\n.estimation-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }\n.estimation-header h1 { margin: 0; font-size: 24px; font-weight: 600; }\n.estimation-header .subtitle { margin-top: 8px; opacity: 0.9; font-size: 14px; }\n.status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }\n.status-draft { background: #6c757d; }\n.status-sent { background: #007bff; }\n.status-converted { background: #28a745; }\n.status-cancelled { background: #dc3545; }\n.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }\n.stat-card { background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }\n.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border-color: #667eea; }\n.stat-icon { font-size: 32px; margin-bottom: 10px; }\n.stat-value { font-size: 20px; font-weight: 700; color: #212529; margin-bottom: 5px; }\n.stat-label { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; }\n.calculation-highlight { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }\n.highlight-label { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; opacity: 0.9; }\n.highlight-value { font-size: 24px; font-weight: 700; margin-bottom: 5px; }\n.highlight-subtitle { font-size: 12px; opacity: 0.8; }\n.cost-breakdown { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 20px 0; }\n.cost-breakdown h3 { margin: 0 0 15px 0; color: #495057; font-size: 18px; }\n.cost-chart { display: flex; flex-direction: column; gap: 15px; }\n.cost-bar { display: flex; align-items: center; gap: 15px; background: white; padding: 15px; border-radius: 6px; border: 1px solid #e9ecef; }\n.cost-label { min-width: 100px; font-weight: 600; color: #495057; }\n.cost-bar-fill { flex: 1; height: 20px; border-radius: 10px; transition: width 0.3s ease; }\n.cost-amount { min-width: 80px; text-align: right; font-weight: 600; color: #212529; }\n.action-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }\n.custom-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-size: 14px; }\n.custom-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }\n.custom-btn.secondary { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); }\n.custom-btn.success { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }\n.custom-btn.danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }\n@media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } .action-buttons { flex-direction: column; align-items: center; } }\n</style>\n\n<script>\n// Update dashboard with current values\nfunction updateDashboard() {\n    try {\n        // Get current form values\n        var projectName = cur_frm.doc.project_name || 'New Project';\n        var clientName = cur_frm.doc.client_name || 'Select Client';\n        var status = cur_frm.doc.status || 'Draft';\n        var quantity = cur_frm.doc.quantity || 0;\n        var totalWeight = cur_frm.doc.total_weight_kg || 0;\n        var totalCost = cur_frm.doc.total_cost || 0;\n        var profitMargin = cur_frm.doc.profit_margin || 25;\n        var weightPerPiece = cur_frm.doc.weight_per_piece_kg || 0;\n        var gsm = cur_frm.doc.gsm || 0;\n        var length = cur_frm.doc.length_cm || 0;\n        var width = cur_frm.doc.width_cm || 0;\n        var totalPaperCost = cur_frm.doc.total_paper_cost || 0;\n        \n        // Update header\n        if (document.getElementById('project-name')) {\n            document.getElementById('project-name').textContent = projectName;\n            document.getElementById('client-name').textContent = clientName;\n            document.getElementById('status-badge').textContent = status;\n            document.getElementById('status-badge').className = 'status-badge status-' + status.toLowerCase().replace(/\\s+/g, '-');\n        }\n        \n        // Update stats\n        if (document.getElementById('quantity-value')) {\n            document.getElementById('quantity-value').textContent = quantity;\n            document.getElementById('weight-value').textContent = (totalWeight > 0 ? totalWeight.toFixed(3) : '0') + ' kg';\n            document.getElementById('cost-value').textContent = totalCost > 0 ? frappe.format_currency(totalCost) : '0';\n            document.getElementById('margin-value').textContent = profitMargin + '%';\n        }\n        \n        // Update calculation highlight\n        if (document.getElementById('calculation-highlight')) {\n            if (weightPerPiece > 0) {\n                document.getElementById('calculation-highlight').style.display = 'block';\n                document.getElementById('weight-per-piece').textContent = 'Weight per Piece: ' + weightPerPiece.toFixed(6) + ' kg';\n                document.getElementById('dimensions-info').textContent = 'Based on ' + gsm + ' GSM, ' + length + ' × ' + width + ' cm';\n            } else {\n                document.getElementById('calculation-highlight').style.display = 'none';\n            }\n        }\n        \n        // Update cost breakdown\n        if (document.getElementById('cost-breakdown')) {\n            if (totalCost > 0) {\n                document.getElementById('cost-breakdown').style.display = 'block';\n                var paperCostPercent = totalPaperCost > 0 ? (totalPaperCost / totalCost * 100) : 0;\n                var processCostPercent = totalCost > 0 ? ((totalCost - totalPaperCost) / totalCost * 100) : 0;\n                \n                document.getElementById('paper-cost-bar').style.width = paperCostPercent + '%';\n                document.getElementById('process-cost-bar').style.width = processCostPercent + '%';\n                document.getElementById('paper-cost-amount').textContent = frappe.format_currency(totalPaperCost);\n                document.getElementById('process-cost-amount').textContent = frappe.format_currency(totalCost - totalPaperCost);\n            } else {\n                document.getElementById('cost-breakdown').style.display = 'none';\n            }\n        }\n        \n        // Update cancel button visibility\n        if (document.getElementById('cancel-btn')) {\n            if (status === 'Draft') {\n                document.getElementById('cancel-btn').style.display = 'inline-block';\n            } else {\n                document.getElementById('cancel-btn').style.display = 'none';\n            }\n        }\n    } catch (error) {\n        console.log('Dashboard update error:', error);\n    }\n}\n\n// Update dashboard when page loads\nsetTimeout(updateDashboard, 1000);\n\n// Update dashboard every 3 seconds to catch changes\nsetInterval(updateDashboard, 3000);\n\nfunction refreshCalculations() {\n    frappe.call({\n        method: 'refresh_calculations',\n        callback: function(r) {\n            if (r.message) {\n                frappe.msgprint('Calculations refreshed successfully!');\n                setTimeout(updateDashboard, 500);\n            }\n        }\n    });\n}\n\nfunction convertToQuotation() {\n    frappe.confirm(\n        'Are you sure you want to convert this estimation to a quotation?',\n        function() {\n            frappe.call({\n                method: 'convert_to_quotation',\n                callback: function(r) {\n                    if (r.message) {\n                        frappe.msgprint('Quotation created successfully!');\n                        setTimeout(updateDashboard, 500);\n                    }\n                }\n            });\n        }\n    );\n}\n\nfunction generatePDF() {\n    frappe.call({\n        method: 'generate_pdf_report',\n        callback: function(r) {\n            if (r.message) {\n                window.open(r.message, '_blank');\n            }\n        }\n    });\n}\n\nfunction cancelEstimation() {\n    frappe.confirm(\n        'Are you sure you want to cancel this estimation?',\n        function() {\n            frappe.model.set_value('Work Order Estimation', cur_frm.doc.name, 'status', 'Cancelled');\n            setTimeout(updateDashboard, 500);\n        }\n    );\n}\n</script>"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-30 14:05:00.000000",
+ "modified_by": "Administrator",
+ "module": "Work Order Estimations",
+ "name": "Work Order Estimation",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Production Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 1
+  }
+ ],
+ "route": "work-order-estimation",
+ "search_fields": "client_name,project_name,status",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "project_name",
+ "track_changes": 1
+}

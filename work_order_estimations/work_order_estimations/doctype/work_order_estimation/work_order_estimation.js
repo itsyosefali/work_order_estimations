@@ -11,6 +11,17 @@ frappe.ui.form.on('Work Order Estimation', {
         
         // Add document flow tracking
         addDocumentFlowTracking(frm);
+        
+        if (frm.doc.estimation_processes && frm.doc.estimation_processes.length > 0) {
+            setTimeout(() => {
+                calculateAllProcessTotals(frm);
+                recalculateOperationsCost(frm);
+            }, 1000);
+        }
+        
+        setInterval(() => {
+            updateDashboard(frm);
+        }, 3000);
     },
     
     client_name: function(frm) {
@@ -78,6 +89,61 @@ frappe.ui.form.on('Work Order Estimation', {
         setTimeout(() => {
             updateDashboard(frm);
         }, 500);
+    },
+    
+    default_bom: function(frm) {
+        // Handle BOM selection and update costs
+        if (frm.doc.default_bom) {
+            updateBOMDetails(frm);
+        }
+    },
+    
+    estimation_processes_add: function(frm, cdt, cdn) {
+        // Recalculate operations cost when processes are added
+        setTimeout(() => {
+            recalculateOperationsCost(frm);
+        }, 500);
+    },
+    
+    estimation_processes_remove: function(frm, cdt, cdn) {
+        // Recalculate operations cost when processes are removed
+        setTimeout(() => {
+            recalculateOperationsCost(frm);
+        }, 500);
+    },
+    
+    estimation_processes: function(frm) {
+        // Recalculate operations cost when estimation processes change
+        setTimeout(() => {
+            calculateAllProcessTotals(frm);
+            recalculateOperationsCost(frm);
+        }, 500);
+    }
+});
+
+// Handle changes in estimation process child table
+frappe.ui.form.on("Estimation Process", {
+    total_cost: function(frm, cdt, cdn) {
+        // Recalculate operations cost when process total_cost changes
+        setTimeout(() => {
+            recalculateOperationsCost(frm);
+        }, 500);
+    },
+    
+    rate: function(frm, cdt, cdn) {
+        // Calculate total_cost for this row and recalculate operations cost
+        calculateProcessTotalCost(frm, cdt, cdn);
+        setTimeout(() => {
+            recalculateOperationsCost(frm);
+        }, 500);
+    },
+    
+    qty: function(frm, cdt, cdn) {
+        // Calculate total_cost for this row and recalculate operations cost
+        calculateProcessTotalCost(frm, cdt, cdn);
+        setTimeout(() => {
+            recalculateOperationsCost(frm);
+        }, 500);
     }
 });
 
@@ -101,6 +167,104 @@ function addActionButtons(frm) {
             }
         });
     }, __('Actions'));
+    
+    // Populate BOM from Default button (when paper_type is selected but no BOM)
+    if (frm.doc.paper_type && !frm.doc.default_bom) {
+        frm.add_custom_button(__('🔗 Populate BOM from Default'), function() {
+            frappe.call({
+                method: 'work_order_estimations.api.populate_bom_from_default',
+                args: {
+                    doctype: frm.doctype,
+                    docname: frm.docname
+                },
+                callback: function(r) {
+                    if (r.message && r.message.success) {
+                        frappe.msgprint(__('BOM populated from default successfully!'));
+                        frm.reload_doc();
+                    }
+                }
+            });
+        }, __('Actions'));
+    }
+    
+    // Update BOM Costs button (only when BOM is selected)
+    if (frm.doc.default_bom) {
+        frm.add_custom_button(__('📊 Update BOM Costs'), function() {
+            frappe.call({
+                method: 'work_order_estimations.api.update_bom_costs',
+                args: {
+                    doctype: frm.doctype,
+                    docname: frm.docname
+                },
+                callback: function(r) {
+                    if (r.message && r.message.success) {
+                        frappe.msgprint(__('BOM costs updated successfully!'));
+                        frm.reload_doc();
+                    }
+                }
+            });
+        }, __('Actions'));
+    }
+    
+    // Recalculate Operations Cost button
+    if (frm.doc.estimation_processes && frm.doc.estimation_processes.length > 0) {
+        frm.add_custom_button(__('🔄 Recalculate Operations Cost'), function() {
+            frappe.call({
+                method: 'work_order_estimations.api.recalculate_operations_cost',
+                args: {
+                    doctype: frm.doctype,
+                    docname: frm.docname
+                },
+                callback: function(r) {
+                    if (r.message && r.message.success) {
+                        frappe.msgprint(__('Operations cost recalculated successfully!'));
+                        frm.reload_doc();
+                    }
+                }
+            });
+        }, __('Actions'));
+        
+        // Manual Calculate All Process Totals button
+        frm.add_custom_button(__('🧮 Calculate All Process Totals'), function() {
+            calculateAllProcessTotals(frm);
+            recalculateOperationsCost(frm);
+            frappe.msgprint(__('All process totals calculated and operations cost updated!'));
+        }, __('Actions'));
+    }
+    
+    // Weight Calculation Breakdown button (for debugging)
+    if (frm.doc.gsm && frm.doc.length_cm && frm.doc.width_cm) {
+        frm.add_custom_button(__('🧮 Weight Calculation Breakdown'), function() {
+            frappe.call({
+                method: 'work_order_estimations.api.get_weight_calculation_breakdown',
+                args: {
+                    doctype: frm.doctype,
+                    docname: frm.docname
+                },
+                callback: function(r) {
+                    if (r.message && r.message.success) {
+                        let breakdown = r.message.breakdown;
+                        let message = `
+                            <h4>Weight Calculation Breakdown</h4>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr><td><strong>Area (cm²):</strong></td><td>${breakdown.area_cm2}</td></tr>
+                                <tr><td><strong>Area (m²):</strong></td><td>${breakdown.area_m2}</td></tr>
+                                <tr><td><strong>Weight (g):</strong></td><td>${breakdown.weight_g}</td></tr>
+                                <tr><td><strong>Weight (kg):</strong></td><td>${breakdown.weight_kg}</td></tr>
+                                <tr><td><strong>Calculated Weight (kg):</strong></td><td>${breakdown.calculated_weight_kg}</td></tr>
+                                <tr><td><strong>Difference:</strong></td><td>${breakdown.difference}</td></tr>
+                            </table>
+                        `;
+                        frappe.msgprint({
+                            title: __('Weight Calculation Breakdown'),
+                            message: message,
+                            indicator: 'blue'
+                        });
+                    }
+                }
+            });
+        }, __('Breakdown'));
+    }
     
     // Convert to Quotation button (only for Sent status)
     if (frm.doc.status === 'Sent') {
@@ -323,8 +487,8 @@ function addCustomDashboard(frm) {
                     <span id="paper-cost-display">0</span>
                 </div>
                 <div class="cost-item">
-                    <span>Process Cost:</span>
-                    <span id="process-cost-display">0</span>
+                    <span>Operations Cost:</span>
+                    <span id="operations-cost-display">0</span>
                 </div>
                 <div class="cost-item total">
                     <span>Total Cost:</span>
@@ -431,6 +595,11 @@ function addDocumentFlowTracking(frm) {
         <div class="document-flow-tracking">
             <h4>📋 Document Flow</h4>
             <div class="flow-items">
+                <div class="flow-item ${frm.doc.status === 'From Quotation' ? 'active' : ''}">
+                    <div class="flow-icon">📋</div>
+                    <div class="flow-text">From Quotation</div>
+                    ${frm.doc.quotation_reference ? `<div class="flow-ref">${frm.doc.quotation_reference}</div>` : ''}
+                </div>
                 <div class="flow-item ${frm.doc.status === 'Draft' ? 'active' : ''}">
                     <div class="flow-icon">📝</div>
                     <div class="flow-text">Estimation Created</div>
@@ -540,17 +709,20 @@ function updateDashboard(frm) {
         if (document.getElementById('cost-breakdown-section')) {
             let totalCost = frm.doc.total_cost || 0;
             let paperCost = frm.doc.total_paper_cost || 0;
-            let processCost = totalCost - paperCost;
+            let operationsCost = frm.doc.total_cost_for_operations || 0;
             
             if (totalCost > 0) {
                 document.getElementById('cost-breakdown-section').style.display = 'block';
                 document.getElementById('paper-cost-display').textContent = frappe.format_currency(paperCost);
-                document.getElementById('process-cost-display').textContent = frappe.format_currency(processCost);
+                document.getElementById('operations-cost-display').textContent = frappe.format_currency(operationsCost);
                 document.getElementById('total-cost-display').textContent = frappe.format_currency(totalCost);
             } else {
                 document.getElementById('cost-breakdown-section').style.display = 'none';
             }
         }
+        
+        // Update HTML field dashboard values
+        updateHTMLFieldDashboard(frm);
         
         // Update status badges
         let statusElements = document.querySelectorAll('.status-badge');
@@ -567,12 +739,44 @@ function updateDashboard(frm) {
     }
 }
 
+function updateHTMLFieldDashboard(frm) {
+    try {
+        // Update HTML field dashboard values
+        if (document.getElementById('dashboard-quantity')) {
+            document.getElementById('dashboard-quantity').textContent = frm.doc.quantity || 0;
+        }
+        if (document.getElementById('dashboard-weight')) {
+            document.getElementById('dashboard-weight').textContent = (frm.doc.total_weight_kg || 0) + ' kg';
+        }
+        if (document.getElementById('dashboard-total-cost')) {
+            document.getElementById('dashboard-total-cost').textContent = frm.doc.total_cost || 0;
+        }
+        if (document.getElementById('dashboard-margin')) {
+            document.getElementById('dashboard-margin').textContent = (frm.doc.profit_margin || 25) + '%';
+        }
+        if (document.getElementById('dashboard-paper-cost')) {
+            document.getElementById('dashboard-paper-cost').textContent = frm.doc.total_paper_cost || 0;
+        }
+        if (document.getElementById('dashboard-operations-cost')) {
+            document.getElementById('dashboard-operations-cost').textContent = frm.doc.total_cost_for_operations || 0;
+        }
+        if (document.getElementById('dashboard-total-cost-breakdown')) {
+            document.getElementById('dashboard-total-cost-breakdown').textContent = frm.doc.total_cost || 0;
+        }
+        if (document.getElementById('dashboard-status')) {
+            document.getElementById('dashboard-status').textContent = 'Status: ' + (frm.doc.status || 'Draft');
+        }
+    } catch (error) {
+        console.log('HTML Field Dashboard update error:', error);
+    }
+}
+
 function updateFlowTracking(frm) {
     try {
         let flowItems = document.querySelectorAll('.flow-item');
         flowItems.forEach(function(item, index) {
-            let statuses = ['Draft', 'Sent', 'Converted to Quotation', 'Sales Order Created', 'Work Order Created', 'Production Completed'];
-            let currentStatus = frm.doc.status || 'Draft';
+            let statuses = ['From Quotation', 'Draft', 'Sent', 'Converted to Quotation', 'Sales Order Created', 'Work Order Created', 'Production Completed'];
+            let currentStatus = frm.doc.status || 'From Quotation';
             let currentIndex = statuses.indexOf(currentStatus);
             
             if (index <= currentIndex) {
@@ -584,6 +788,93 @@ function updateFlowTracking(frm) {
     } catch (error) {
         console.log('Flow tracking update error:', error);
     }
+}
+
+
+
+function updateBOMDetails(frm) {
+    // Update BOM details and calculations
+    if (frm.doc.default_bom) {
+        frappe.call({
+            method: 'work_order_estimations.api.get_bom_details',
+            args: {
+                bom_no: frm.doc.default_bom
+            },
+            callback: function(r) {
+                if (r.message && r.message.success) {
+                    let bomData = r.message.bom_data;
+                    
+                    // Update BOM-related fields
+                    if (bomData.total_cost && bomData.quantity) {
+                        let bomCostPerUnit = bomData.total_cost / bomData.quantity;
+                        frm.set_value('total_cost', bomCostPerUnit * frm.doc.quantity);
+                        frm.set_value('cost_per_unit', bomCostPerUnit);
+                        frm.refresh_field('total_cost');
+                        frm.refresh_field('cost_per_unit');
+                    }
+                    
+                    frappe.msgprint(__('BOM details updated successfully!'));
+                }
+            }
+        });
+    }
+}
+
+function calculateProcessTotalCost(frm, cdt, cdn) {
+    // Calculate total_cost for a specific estimation process row
+    let row = locals[cdt][cdn];
+    if (row.rate && row.qty) {
+        let total_cost = parseFloat(row.rate) * parseFloat(row.qty);
+        frappe.model.set_value(cdt, cdn, 'total_cost', total_cost);
+    }
+}
+
+function calculateAllProcessTotals(frm) {
+    // Calculate total_cost for all estimation process rows
+    if (frm.doc.estimation_processes) {
+        frm.doc.estimation_processes.forEach(function(process, index) {
+            if (process.rate && process.qty) {
+                let total_cost = parseFloat(process.rate) * parseFloat(process.qty);
+                frappe.model.set_value('Estimation Process', process.name, 'total_cost', total_cost);
+            }
+        });
+    }
+}
+
+function recalculateOperationsCost(frm) {
+    // Recalculate operations cost from estimation processes
+    let totalOperationsCost = 0;
+    
+    if (frm.doc.estimation_processes) {
+        frm.doc.estimation_processes.forEach(function(process) {
+            if (process.total_cost) {
+                totalOperationsCost += parseFloat(process.total_cost) || 0;
+            }
+        });
+    }
+    
+    // Update the total_cost_for_operations field
+    frm.set_value('total_cost_for_operations', totalOperationsCost);
+    
+    // Update total cost (paper + operations)
+    let totalPaperCost = parseFloat(frm.doc.total_paper_cost) || 0;
+    let totalCost = totalPaperCost + totalOperationsCost;
+    
+    frm.set_value('total_cost', totalCost);
+    
+    // Update cost per unit
+    let quantity = parseFloat(frm.doc.quantity) || 0;
+    if (quantity > 0) {
+        frm.set_value('cost_per_unit', totalCost / quantity);
+    }
+    
+    // Refresh fields
+    frm.refresh_field('total_cost_for_operations');
+    frm.refresh_field('total_cost');
+    frm.refresh_field('cost_per_unit');
+    
+    // Update dashboard after cost recalculation
+    updateDashboard(frm);
 }
 
 

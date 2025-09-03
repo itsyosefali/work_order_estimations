@@ -9,10 +9,60 @@ import json
 class WorkOrderEstimation(Document):
     def validate(self):
         """Validate and calculate all fields"""
+        self.validate_required_specifications()
         self.calculate_paper_metrics()
+        self.validate_weight_calculations()  # Add weight validation
         self.calculate_costs()
         self.update_status()
         self.validate_processes()
+        self.validate_bom_requirement()
+    
+    def on_change(self):
+        """Handle field changes"""
+        if self.has_value_changed('default_bom'):
+            self.update_costs_from_bom()
+        if self.has_value_changed('paper_type'):
+            self.auto_populate_bom_from_default()
+    
+    def auto_populate_bom_from_default(self):
+        """Auto-populate BOM field from item's default_bom"""
+        if self.paper_type and not self.default_bom:
+            try:
+                item = frappe.get_doc("Item", self.paper_type)
+                if item.default_bom:
+                    self.default_bom = item.default_bom
+                    frappe.msgprint(_("BOM automatically populated from item's default BOM: {0}").format(item.default_bom))
+            except Exception as e:
+                frappe.log_error(f"Error auto-populating BOM for item {self.paper_type}: {str(e)}")
+    
+    def recalculate_operations_cost(self):
+        """Recalculate total operations cost from estimation processes"""
+        self.total_cost_for_operations = 0
+        if self.estimation_processes:
+            for process in self.estimation_processes:
+                if process.total_cost:
+                    self.total_cost_for_operations += process.total_cost
+        
+        # Update total cost
+        self.total_cost = self.total_paper_cost + self.total_cost_for_operations
+        
+        # Update cost per unit
+        quantity = float(self.quantity) if isinstance(self.quantity, str) else self.quantity
+        if quantity > 0:
+            self.cost_per_unit = self.total_cost / quantity
+        else:
+            self.cost_per_unit = 0
+    
+    def validate_required_specifications(self):
+        """Validate that required specifications are provided"""
+        if not self.gsm or self.gsm <= 0:
+            frappe.throw(_("GSM (Grams per Square Meter) is required and must be greater than 0"))
+        if not self.length_cm or self.length_cm <= 0:
+            frappe.throw(_("Length (cm) is required and must be greater than 0"))
+        if not self.width_cm or self.width_cm <= 0:
+            frappe.throw(_("Width (cm) is required and must be greater than 0"))
+        if not self.quantity or self.quantity <= 0:
+            frappe.throw(_("Quantity is required and must be greater than 0"))
     
     def validate_processes(self):
         """Validate that all processes have required fields"""
@@ -25,6 +75,63 @@ class WorkOrderEstimation(Document):
                 if not process.rate:
                     frappe.throw(_("Rate is required for all processes"))
     
+    def validate_bom_requirement(self):
+        """Validate BOM requirement based on status"""
+        if self.status in ['Work Order Created', 'Production Completed'] and not self.default_bom:
+            frappe.throw(_("BOM is required when status is {0}").format(self.status))
+    
+    def update_costs_from_bom(self):
+        """Update costs based on BOM if available"""
+        if self.default_bom:
+            try:
+                bom = frappe.get_doc("BOM", self.default_bom)
+                if bom.total_cost and bom.quantity:
+                    bom_cost_per_unit = bom.total_cost / bom.quantity
+                    # Update costs if they're not already set
+                    if not self.total_cost or self.total_cost == 0:
+                        self.total_cost = bom_cost_per_unit * self.quantity
+                        self.cost_per_unit = bom_cost_per_unit
+                        frappe.msgprint(_("Costs updated from BOM {0}").format(self.default_bom))
+            except Exception as e:
+                frappe.log_error(f"Error updating costs from BOM {self.default_bom}: {str(e)}")
+    
+    def validate_weight_calculations(self):
+        """Validate that weight calculations are mathematically correct"""
+        if self.gsm and self.length_cm and self.weight_per_piece_kg:
+            # Verify the calculation
+            area_m2 = (self.length_cm * self.width_cm) / 10000
+            expected_weight_g = self.gsm * area_m2
+            expected_weight_kg = expected_weight_g / 1000
+            
+            # Allow for small floating point precision differences
+            tolerance = 0.000001
+            if abs(self.weight_per_piece_kg - expected_weight_kg) > tolerance:
+                frappe.msgprint(
+                    _("Warning: Weight calculation may be incorrect. Expected: {0} kg, Calculated: {1} kg").format(
+                        expected_weight_kg, self.weight_per_piece_kg
+                    ),
+                    indicator="yellow"
+                )
+    
+    def get_weight_calculation_breakdown(self):
+        """Get detailed breakdown of weight calculations for debugging"""
+        if self.gsm and self.length_cm and self.width_cm:
+            area_cm2 = self.length_cm * self.width_cm
+            area_m2 = area_cm2 / 10000
+            weight_g = self.gsm * area_m2
+            weight_kg = weight_g / 1000
+            
+            return {
+                "area_cm2": area_cm2,
+                "area_m2": area_m2,
+                "weight_g": weight_g,
+                "weight_kg": weight_kg,
+                "calculated_weight_kg": self.weight_per_piece_kg,
+                "difference": abs(weight_kg - self.weight_per_piece_kg)
+            }
+        return None
+
+    
     def calculate_paper_metrics(self):
         """Calculate paper weight and consumption metrics"""
         if self.quantity and self.gsm and self.length_cm and self.width_cm:
@@ -34,8 +141,15 @@ class WorkOrderEstimation(Document):
             length_cm = float(self.length_cm) if isinstance(self.length_cm, str) else self.length_cm
             width_cm = float(self.width_cm) if isinstance(self.width_cm, str) else self.width_cm
             
-            # Weight per piece in kg: (length_cm * width_cm * gsm) / 100000
-            self.weight_per_piece_kg = (length_cm * width_cm * gsm) / 100000
+            # CORRECTED: Weight per piece calculation
+            # Convert cm to m: 1 m = 100 cm, so 1 m² = 10,000 cm²
+            # Area in m² = (length_cm * width_cm) / 10,000
+            # Weight in g = gsm * area_m²
+            # Weight in kg = weight_g / 1000
+            
+            area_m2 = (length_cm * width_cm) / 10000  # Convert cm² to m²
+            weight_g = gsm * area_m2  # Weight in grams
+            self.weight_per_piece_kg = weight_g / 1000  # Convert to kg
             
             # Pieces per kg
             if self.weight_per_piece_kg > 0:
@@ -81,15 +195,15 @@ class WorkOrderEstimation(Document):
             self.total_paper_cost = 0
             self.cost_per_piece = 0
         
-        # Process costs
-        total_process_cost = 0
+        # Calculate total operations cost from estimation processes
+        self.total_cost_for_operations = 0
         if self.estimation_processes:
             for process in self.estimation_processes:
                 if process.total_cost:
-                    total_process_cost += process.total_cost
+                    self.total_cost_for_operations += process.total_cost
         
-        # Total cost
-        self.total_cost = self.total_paper_cost + total_process_cost
+        # Total cost (paper + operations)
+        self.total_cost = self.total_paper_cost + self.total_cost_for_operations
         
         # Cost per unit
         quantity = float(self.quantity) if isinstance(self.quantity, str) else self.quantity
@@ -112,7 +226,10 @@ class WorkOrderEstimation(Document):
     def update_status(self):
         """Update status based on current state"""
         if not self.status:
-            self.status = "Draft"
+            if self.quotation_reference:
+                self.status = "From Quotation"
+            else:
+                self.status = "Draft"
     
     def on_submit(self):
         """Actions when document is submitted"""

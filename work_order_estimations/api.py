@@ -280,3 +280,97 @@ def get_document_flow_summary(doctype, docname):
 def test_api_connection():
     """Test method to verify API is working"""
     return {"success": True, "message": "Work Order Estimations API is working correctly!"}
+
+
+
+@frappe.whitelist()
+def get_bom_details(bom_no):
+    """Get BOM details for Work Order Estimation"""
+    try:
+        bom = frappe.get_doc("BOM", bom_no)
+        return {
+            "success": True,
+            "bom_data": {
+                "name": bom.name,
+                "item": bom.item,
+                "quantity": bom.quantity,
+                "total_cost": bom.total_cost,
+                "raw_material_cost": bom.raw_material_cost,
+                "operating_cost": bom.operating_cost
+            }
+        }
+    except Exception as e:
+        error_msg = f"BOM details fetch failed for {bom_no}: {str(e)[:100]}"
+        frappe.log_error(error_msg, "Work Order Estimation API Error")
+        return {"success": False, "message": str(e)}
+
+@frappe.whitelist()
+def auto_fetch_rate_from_item(doctype, docname):
+    """Auto-fetch rate from Item Master"""
+    try:
+        doc = frappe.get_doc(doctype, docname)
+        if doc.paper_type:
+            item = frappe.get_doc("Item", doc.paper_type)
+            if item.valuation_rate:
+                doc.rate_per_kg = item.valuation_rate
+                doc.save()
+                return {"success": True, "rate": doc.rate_per_kg}
+        return {"success": False, "message": "No rate found for this item"}
+    except Exception as e:
+        error_msg = f"Rate auto-fetch failed for {doctype} {docname}: {str(e)[:100]}"
+        frappe.log_error(error_msg, "Work Order Estimation API Error")
+        return {"success": False, "message": str(e)}
+
+@frappe.whitelist()
+def update_bom_costs(doctype, docname):
+    """Update costs from BOM for Work Order Estimation"""
+    try:
+        doc = frappe.get_doc(doctype, docname)
+        doc.update_costs_from_bom()
+        doc.save()
+        return {"success": True, "message": "BOM costs updated successfully!"}
+    except Exception as e:
+        error_msg = f"BOM cost update failed for {doctype} {docname}: {str(e)[:100]}"
+        frappe.log_error(error_msg, "Work Order Estimation API Error")
+        return {"success": False, "message": str(e)}
+
+@frappe.whitelist()
+def recalculate_operations_cost(doctype, docname):
+    """Recalculate total operations cost for Work Order Estimation"""
+    try:
+        doc = frappe.get_doc(doctype, docname)
+        doc.recalculate_operations_cost()
+        doc.save()
+        return {"success": True, "message": "Operations cost recalculated successfully!"}
+    except Exception as e:
+        error_msg = f"Operations cost recalculation failed for {doctype} {docname}: {str(e)[:100]}"
+        frappe.log_error(error_msg, "Work Order Estimation API Error")
+        return {"success": False, "message": str(e)}
+
+@frappe.whitelist()
+def populate_bom_from_default(doctype, docname):
+    """Populate BOM field from item's default BOM for Work Order Estimation"""
+    try:
+        doc = frappe.get_doc(doctype, docname)
+        doc.auto_populate_bom_from_default()
+        doc.save()
+        return {"success": True, "message": "BOM populated from default successfully!"}
+    except Exception as e:
+        error_msg = f"BOM population from default failed for {doctype} {docname}: {str(e)[:100]}"
+        frappe.log_error(error_msg, "Work Order Estimation API Error")
+        return {"success": False, "message": str(e)}
+
+@frappe.whitelist()
+def get_weight_calculation_breakdown(doctype, docname):
+    """Get detailed breakdown of weight calculations for debugging"""
+    try:
+        doc = frappe.get_doc(doctype, docname)
+        breakdown = doc.get_weight_calculation_breakdown()
+        if breakdown:
+            return {"success": True, "breakdown": breakdown}
+        else:
+            return {"success": False, "message": "Unable to calculate breakdown"}
+    except Exception as e:
+        error_msg = f"Weight calculation breakdown failed for {doctype} {docname}: {str(e)[:100]}"
+        frappe.log_error(error_msg, "Work Order Estimation API Error")
+        return {"success": False, "message": str(e)}

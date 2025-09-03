@@ -27,7 +27,7 @@ app_license = "MIT"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Quotation" : "public/js/quotation.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -213,3 +213,22 @@ app_license = "MIT"
 # auth_hooks = [
 # 	"work_order_estimations.auth.validate"
 # ]
+fixtures=[
+    {
+    	"doctype":"Custom Field",
+        "filters": [
+            [
+                "name",
+                "in",
+                [ 
+                    "Item-custom_gsm",
+                    "Item-custom_length",
+                    "Item-custom_width",
+                    "Quotation Item-custom_gsm",
+                    "Quotation Item-custom_length",
+                    "Quotation Item-custom_width",
+                 ]
+            ]
+        ]
+    }
+]

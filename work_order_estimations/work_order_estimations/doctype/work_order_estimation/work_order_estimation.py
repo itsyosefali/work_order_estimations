@@ -7,6 +7,22 @@ from frappe import _
 import json
 
 class WorkOrderEstimation(Document):
+    def on_trash(self):
+        if self.quotation_reference and self.paper_type:
+            try:
+                quotation = frappe.get_doc("Quotation", self.quotation_reference)
+                for item in quotation.items:
+                    if item.item_code == self.paper_type and item.custom_work_order_estimation_references == self.name:
+                        item.custom_work_order_estimation_references = None
+                        item.custom_total_cost_from_woe = 0
+                        item.custom_rate_from_woe = 0
+                        break
+                quotation.save()
+                frappe.db.commit()
+                frappe.msgprint(_("WOE reference cleared from Quotation {0}").format(self.quotation_reference))
+                
+            except Exception as e:
+                frappe.log_error(f"Error clearing WOE reference from quotation: {str(e)}")
     def validate(self):
         """Validate and calculate all fields"""
         self.validate_required_specifications()
@@ -23,6 +39,8 @@ class WorkOrderEstimation(Document):
             self.update_costs_from_bom()
         if self.has_value_changed('paper_type'):
             self.auto_populate_bom_from_default()
+        if self.has_value_changed('status'):
+            self.update_quotation_item_on_status_change()
     
     def auto_populate_bom_from_default(self):
         """Auto-populate BOM field from item's default_bom"""
@@ -228,6 +246,8 @@ class WorkOrderEstimation(Document):
         if not self.status:
             if self.quotation_reference:
                 self.status = "From Quotation"
+                # Update quotation item with WOE reference when first created
+                self.update_quotation_item_with_woe_reference()
             else:
                 self.status = "Draft"
     
@@ -477,18 +497,7 @@ class WorkOrderEstimation(Document):
             frappe.log_error(error_msg, "Work Order Estimation Error")
             frappe.throw(_("Error creating stock entries: {0}").format(str(e)))
     
-    def generate_pdf_report(self):
-        """Generate professional PDF report"""
-        try:
-            # This will use the print format
-            pdf_url = frappe.get_url_to_print(self.doctype, self.name)
-            return pdf_url
-        except Exception as e:
-            # Log error with shorter message to avoid truncation
-            error_msg = f"PDF generation failed for {self.name}: {str(e)[:100]}"
-            frappe.log_error(error_msg, "Work Order Estimation Error")
-            frappe.throw(_("Error generating PDF report: {0}").format(str(e)))
-    
+
     def get_cost_breakdown(self):
         """Get detailed cost breakdown for dashboard"""
         breakdown = {
@@ -508,4 +517,60 @@ class WorkOrderEstimation(Document):
         
         return breakdown
     
+    def update_quotation_item_with_woe_reference(self):
+        """Update quotation item with WOE reference when WOE is created"""
+        if self.quotation_reference and self.paper_type:
+            try:
+                # Get the quotation
+                quotation = frappe.get_doc("Quotation", self.quotation_reference)
+                
+                # Find the item that matches this WOE's paper type
+                for item in quotation.items:
+                    if item.item_code == self.paper_type:
+                        # Update the quotation item with WOE reference
+                        item.custom_work_order_estimation_references = self.name
+                        break
+                
+                # Save the quotation
+                quotation.save()
+                frappe.db.commit()
+                
+                frappe.msgprint(_("Quotation item updated with WOE reference: {0}").format(self.name))
+                
+            except Exception as e:
+                frappe.log_error(f"Error updating quotation item with WOE reference: {str(e)}")
+    
+    def update_quotation_item_on_status_change(self):
+        """Update quotation item with cost and rate when WOE status changes to 'Estimation Done'"""
+        if self.status == "Estimation Done" and self.quotation_reference and self.paper_type:
+            try:
+                # Get the quotation
+                quotation = frappe.get_doc("Quotation", self.quotation_reference)
+                
+                # Find the item that matches this WOE's paper type
+                for item in quotation.items:
+                    if item.item_code == self.paper_type:
+                        # Update the quotation item with WOE data
+                        item.custom_work_order_estimation_references = self.name
+                        item.custom_total_cost_from_woe = self.total_cost or 0
+                        item.custom_rate_from_woe = self.cost_per_unit or 0
+                        item.qty = self.quantity
+                        item.rate = self.cost_per_unit or 0
+                        item.amount = (self.cost_per_unit or 0) * (self.quantity or 0)
+                        break
+                
+                # Recalculate quotation totals
+                quotation.calculate_taxes_and_totals()
+                
+                # Save the quotation
+                quotation.save()
+                frappe.db.commit()
+                
+                frappe.msgprint(_("Quotation item updated with WOE cost data: Total Cost: {0}, Rate: {1}, Qty: {2}").format(
+                    self.total_cost or 0, self.cost_per_unit or 0, self.quantity or 0
+                ))
+                
+            except Exception as e:
+                frappe.log_error(f"Error updating quotation item with WOE cost data: {str(e)}")
+
 

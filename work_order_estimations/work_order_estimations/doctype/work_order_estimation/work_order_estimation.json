@@ -71,7 +71,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "From Quotation\nDraft\nSent\nConverted to Quotation\nSales Order Created\nWork Order Created\nProduction Completed\nCancelled",
+   "options": "From Quotation\nEstimation Done",
    "read_only": 1
   },
   {
@@ -340,7 +340,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-03 13:19:22.913171",
+ "modified": "2025-09-03 13:41:28.341466",
  "modified_by": "Administrator",
  "module": "Work Order Estimations",
  "name": "Work Order Estimation",
@@ -396,7 +396,7 @@
   },
   {
    "color": "Green",
-   "title": "Estimated Done"
+   "title": "Estimation Done"
   }
  ],
  "title_field": "project_name",

@@ -227,6 +227,8 @@ fixtures=[
                     "Quotation Item-custom_gsm",
                     "Quotation Item-custom_length",
                     "Quotation Item-custom_width",
+                    "Quotation Item-custom_work_order_estimation_references",
+                    "Quotation Item-custom_total_cost_from_woe",
                  ]
             ]
         ]

@@ -184,7 +184,7 @@ function addActionButtons(frm) {
                     }
                 }
             });
-        }, __('Actions'));
+        }, __('Breakdown'));
     }
     
     // Update BOM Costs button (only when BOM is selected)
@@ -203,10 +203,10 @@ function addActionButtons(frm) {
                     }
                 }
             });
-        }, __('Actions'));
+        }, __('Breakdown'));
     }
     
-    // Recalculate Operations Cost button
+    // Calculation buttons in Breakdown section
     if (frm.doc.estimation_processes && frm.doc.estimation_processes.length > 0) {
         frm.add_custom_button(__('🔄 Recalculate Operations Cost'), function() {
             frappe.call({
@@ -222,14 +222,14 @@ function addActionButtons(frm) {
                     }
                 }
             });
-        }, __('Actions'));
+        }, __('Breakdown'));
         
         // Manual Calculate All Process Totals button
         frm.add_custom_button(__('🧮 Calculate All Process Totals'), function() {
             calculateAllProcessTotals(frm);
             recalculateOperationsCost(frm);
             frappe.msgprint(__('All process totals calculated and operations cost updated!'));
-        }, __('Actions'));
+        }, __('Breakdown'));
     }
     
     // Weight Calculation Breakdown button (for debugging)
@@ -266,21 +266,23 @@ function addActionButtons(frm) {
         }, __('Breakdown'));
     }
     
-    // Convert to Quotation button (only for Sent status)
-    if (frm.doc.status === 'Sent') {
-        frm.add_custom_button(__('📋 Convert to Quotation'), function() {
+    // Estimation Done button (only for From Quotation status)
+    if (frm.doc.status === 'From Quotation') {
+        frm.add_custom_button(__('✅ Estimation Done'), function() {
             frappe.confirm(
-                __('Are you sure you want to convert this estimation to a quotation?'),
+                __('Are you sure you want to mark this estimation as done? This will update the quotation with calculated costs.'),
                 function() {
                     frappe.call({
-                        method: 'work_order_estimations.api.convert_to_quotation',
+                        method: 'frappe.client.set_value',
                         args: {
                             doctype: frm.doctype,
-                            docname: frm.docname
+                            name: frm.docname,
+                            fieldname: 'status',
+                            value: 'Estimation Done'
                         },
                         callback: function(r) {
-                            if (r.message && r.message.success) {
-                                frappe.msgprint(__('Quotation {0} created successfully!').format(r.message.quotation_name));
+                            if (r.message) {
+                                frappe.msgprint(__('Estimation marked as done! Quotation has been updated with calculated costs.'));
                                 frm.reload_doc();
                             }
                         }
@@ -406,7 +408,7 @@ function addActionButtons(frm) {
                 });
             }
         );
-    }, __('Actions'));
+    }, __('Breakdown'));
     
     // Submit button (for Draft status)
     if (frm.doc.status === 'Draft' && !frm.doc.docstatus) {

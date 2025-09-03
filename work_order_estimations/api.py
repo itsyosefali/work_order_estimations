@@ -76,9 +76,13 @@ def create_stock_entries_from_work_order(doctype, docname, work_order_name):
 def generate_pdf_report(doctype, docname):
     """Generate PDF report for Work Order Estimation"""
     try:
-        doc = frappe.get_doc(doctype, docname)
-        pdf_url = doc.generate_pdf_report()
-        return {"success": True, "pdf_url": pdf_url}
+        from frappe.utils import get_url
+        
+        # Use the standard ERPNext print format URL
+        pdf_url = f"/api/method/frappe.utils.print_format.download_pdf?doctype={doctype}&name={docname}&format=Work Order Estimation"
+        full_url = get_url(pdf_url)
+        
+        return {"success": True, "pdf_url": full_url}
     except Exception as e:
         # Log error with shorter message to avoid truncation
         error_msg = f"PDF generation failed for {doctype} {docname}: {str(e)[:100]}"

@@ -15,28 +15,13 @@
   "delivery_date",
   "urgency_level",
   "sales_price",
-  "paper_specifications_section",
-  "paper_type",
-  "default_bom",
-  "quantity",
-  "gsm",
-  "length_cm",
-  "width_cm",
-  "finish",
-  "waste_percentage",
-  "rate_per_kg",
-  "paper_calculations_section",
-  "weight_per_piece_kg",
-  "pieces_per_kg",
-  "net_weight_kg",
-  "waste_kg",
-  "total_weight_kg",
-  "cost_per_piece",
-  "total_paper_cost",
+  "items_section",
+  "estimation_items",
   "processes_section",
   "estimation_processes",
   "total_cost_for_operations",
   "cost_analysis_section",
+  "total_paper_cost",
   "total_cost",
   "cost_per_unit",
   "profit_margin",
@@ -66,57 +51,13 @@
    "reqd": 1
   },
   {
-   "default": "From Quotation",
+   "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "From Quotation\nEstimation Done",
+   "options": "Draft\nEstimation Done\nQuotation Created",
    "read_only": 1
-  },
-  {
-   "description": "Select paper type from Item Master",
-   "fieldname": "paper_type",
-   "fieldtype": "Link",
-   "label": "Paper Type",
-   "options": "Item",
-   "reqd": 1
-  },
-  {
-   "description": "Paper weight in grams per square meter",
-   "fieldname": "gsm",
-   "fieldtype": "Int",
-   "label": "GSM (Grams per Square Meter)",
-   "reqd": 1
-  },
-  {
-   "description": "Length of paper in centimeters",
-   "fieldname": "length_cm",
-   "fieldtype": "Float",
-   "label": "Length (cm)",
-   "reqd": 1
-  },
-  {
-   "description": "Width of paper in centimeters",
-   "fieldname": "width_cm",
-   "fieldtype": "Float",
-   "label": "Width (cm)",
-   "reqd": 1
-  },
-  {
-   "description": "Number of pieces to be produced",
-   "fieldname": "quantity",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Quantity (Pieces)",
-   "reqd": 1
-  },
-  {
-   "description": "Cost per kilogram of paper",
-   "fieldname": "rate_per_kg",
-   "fieldtype": "Currency",
-   "label": "Rate per KG",
-   "reqd": 1
   },
   {
    "default": "25",
@@ -124,22 +65,6 @@
    "fieldname": "profit_margin",
    "fieldtype": "Percent",
    "label": "Profit Margin (%)"
-  },
-  {
-   "description": "Calculated weight per piece in kilograms",
-   "fieldname": "weight_per_piece_kg",
-   "fieldtype": "Float",
-   "label": "Weight per Piece (kg)",
-   "precision": "6",
-   "read_only": 1
-  },
-  {
-   "description": "Number of pieces that can be made from 1 kg",
-   "fieldname": "pieces_per_kg",
-   "fieldtype": "Float",
-   "label": "Pieces per KG",
-   "precision": "2",
-   "read_only": 1
   },
   {
    "description": "Total weight including waste",
@@ -196,14 +121,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "paper_type.default_bom",
-   "fieldname": "default_bom",
-   "fieldtype": "Link",
-   "label": "Default BOM",
-   "options": "BOM",
-   "read_only": 1
-  },
-  {
    "description": "Total cost for all production operations",
    "fieldname": "total_cost_for_operations",
    "fieldtype": "Currency",
@@ -217,11 +134,11 @@
    "label": "Dashboard"
   },
   {
-   "description": "Professional estimation report with calculations and costs",
+   "description": "Dashboard will be shown via JavaScript",
    "fieldname": "custom_dashboard",
    "fieldtype": "HTML",
-   "label": "Estimation Report",
-   "options": "<div style=\"padding: 20px; font-family: Arial, sans-serif;\">\n    <h2 style=\"color: #2c3e50; margin-bottom: 20px;\">\ud83d\udccb Work Order Estimation Dashboard</h2>\n    \n    <div style=\"display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;\">\n        <div style=\"background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\">\n            <div style=\"font-size: 24px; margin-bottom: 10px;\">\ud83d\udcc4</div>\n            <div style=\"font-size: 18px; font-weight: bold; color: #2c3e50;\">Quantity</div>\n            <div style=\"font-size: 14px; color: #7f8c8d;\">{{ doc.quantity or 0 }}</div>\n        </div>\n        <div style=\"background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\">\n            <div style=\"font-size: 24px; margin-bottom: 10px;\">\u2696\ufe0f</div>\n            <div style=\"font-size: 18px; font-weight: bold; color: #2c3e50;\">Total Weight</div>\n            <div style=\"font-size: 14px; color: #7f8c8d;\">{{ doc.total_weight_kg or 0 }} kg</div>\n        </div>\n        <div style=\"background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\">\n            <div style=\"font-size: 24px; margin-bottom: 10px;\">\ud83d\udcb0</div>\n            <div style=\"font-size: 18px; font-weight: bold; color: #2c3e50;\">Total Cost</div>\n            <div style=\"font-size: 14px; color: #7f8c8d;\">{{ frappe.format_currency(doc.total_cost or 0) }}</div>\n        </div>\n        <div style=\"background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\">\n            <div style=\"font-size: 24px; margin-bottom: 10px;\">\ud83d\udcca</div>\n            <div style=\"font-size: 18px; font-weight: bold; color: #2c3e50;\">Profit Margin</div>\n            <div style=\"font-size: 14px; color: #7f8c8d;\">{{ doc.profit_margin or 25 }}%</div>\n        </div>\n    </div>\n    \n    <div style=\"background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin: 20px 0;\">\n        <h3 style=\"color: #495057; margin-top: 0;\">\ud83d\udcb0 Cost Breakdown</h3>\n        <div style=\"margin-bottom: 15px;\">\n            <div style=\"display: flex; justify-content: space-between; margin-bottom: 5px;\">\n                <span style=\"font-weight: bold;\">Paper Cost:</span>\n                <span>{{ frappe.format_currency(doc.total_paper_cost or 0) }}</span>\n            </div>\n            <div style=\"display: flex; justify-content: space-between; margin-bottom: 5px;\">\n                <span style=\"font-weight: bold;\">Operations Cost:</span>\n                <span>{{ frappe.format_currency(doc.total_cost_for_operations or 0) }}</span>\n            </div>\n            <hr style=\"border: none; border-top: 1px solid #dee2e6; margin: 10px 0;\">\n            <div style=\"display: flex; justify-content: space-between; font-weight: bold; font-size: 16px;\">\n                <span>Total Cost:</span>\n                <span>{{ frappe.format_currency(doc.total_cost or 0) }}</span>\n            </div>\n        </div>\n    </div>\n    \n    <div style=\"text-align: center; margin-top: 20px;\">\n        <span style=\"background: #007bff; color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold;\">\n            Status: {{ doc.status or 'Draft' }}\n        </span>\n    </div>\n</div>",
+   "label": "Estimation Dashboard",
+   "options": "<div id=\"custom-dashboard-placeholder\">Dashboard loading...</div>",
    "read_only": 1
   },
   {
@@ -261,54 +178,16 @@
   {
    "collapsible": 1,
    "collapsible_depends_on": "eval:!doc.docstatus",
-   "fieldname": "paper_specifications_section",
+   "fieldname": "items_section",
    "fieldtype": "Tab Break",
-   "label": "Paper Specifications"
+   "label": "Estimation Items"
   },
   {
-   "default": "Uncoated",
-   "fieldname": "finish",
-   "fieldtype": "Select",
-   "label": "Finish",
-   "options": "Matte\nGlossy\nSemi-Gloss\nUncoated\nCoated"
-  },
-  {
-   "default": "10",
-   "description": "Expected waste percentage during production",
-   "fieldname": "waste_percentage",
-   "fieldtype": "Percent",
-   "label": "Waste Percentage"
-  },
-  {
-   "collapsible": 1,
-   "collapsible_depends_on": "eval:!doc.docstatus",
-   "fieldname": "paper_calculations_section",
-   "fieldtype": "Tab Break",
-   "label": "Paper Calculations"
-  },
-  {
-   "description": "Total weight needed for production",
-   "fieldname": "net_weight_kg",
-   "fieldtype": "Float",
-   "label": "Net Weight (kg)",
-   "precision": "3",
-   "read_only": 1
-  },
-  {
-   "description": "Additional weight for waste allowance",
-   "fieldname": "waste_kg",
-   "fieldtype": "Float",
-   "label": "Waste Weight (kg)",
-   "precision": "3",
-   "read_only": 1
-  },
-  {
-   "description": "Paper cost per individual piece",
-   "fieldname": "cost_per_piece",
-   "fieldtype": "Currency",
-   "label": "Cost per Piece",
-   "precision": "4",
-   "read_only": 1
+   "description": "Items with paper specifications and calculations",
+   "fieldname": "estimation_items",
+   "fieldtype": "Table",
+   "label": "Estimation Items",
+   "options": "Work Order Estimation Item"
   },
   {
    "collapsible": 1,
@@ -391,12 +270,16 @@
  "sort_order": "DESC",
  "states": [
   {
-   "color": "Yellow",
-   "title": "From Quotation"
+   "color": "Gray",
+   "title": "Draft"
+  },
+  {
+   "color": "Blue",
+   "title": "Estimation Done"
   },
   {
    "color": "Green",
-   "title": "Estimation Done"
+   "title": "Quotation Created"
   }
  ],
  "title_field": "project_name",

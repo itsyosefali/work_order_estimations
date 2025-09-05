@@ -22,6 +22,9 @@ frappe.ui.form.on('Work Order Estimation', {
         setInterval(() => {
             updateDashboard(frm);
         }, 3000);
+        
+        // Make fields read-only when status is "Estimation Done"
+        setFieldsReadOnly(frm);
     },
     
     client_name: function(frm) {
@@ -31,71 +34,11 @@ frappe.ui.form.on('Work Order Estimation', {
         }
     },
     
-    paper_type: function(frm) {
-        // Auto-fetch rate from Item Master
-        if (frm.doc.paper_type) {
-            frappe.call({
-                method: 'work_order_estimations.api.auto_fetch_rate_from_item',
-                args: {
-                    doctype: frm.doctype,
-                    docname: frm.docname
-                },
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        frm.reload_doc();
-                    }
-                }
-            });
-        }
-    },
-    
-    quantity: function(frm) {
-        // Refresh calculations when quantity changes
-        setTimeout(() => {
-            updateDashboard(frm);
-        }, 500);
-    },
-    
-    gsm: function(frm) {
-        // Refresh calculations when GSM changes
-        setTimeout(() => {
-            updateDashboard(frm);
-        }, 500);
-    },
-    
-    length_cm: function(frm) {
-        // Refresh calculations when dimensions change
-        setTimeout(() => {
-            updateDashboard(frm);
-        }, 500);
-    },
-    
-    width_cm: function(frm) {
-        // Refresh calculations when dimensions change
-        setTimeout(() => {
-            updateDashboard(frm);
-        }, 500);
-    },
-    
-    rate_per_kg: function(frm) {
-        // Refresh calculations when rate changes
-        setTimeout(() => {
-            updateDashboard(frm);
-        }, 500);
-    },
-    
     profit_margin: function(frm) {
         // Refresh calculations when margin changes
         setTimeout(() => {
             updateDashboard(frm);
         }, 500);
-    },
-    
-    default_bom: function(frm) {
-        // Handle BOM selection and update costs
-        if (frm.doc.default_bom) {
-            updateBOMDetails(frm);
-        }
     },
     
     estimation_processes_add: function(frm, cdt, cdn) {
@@ -117,6 +60,20 @@ frappe.ui.form.on('Work Order Estimation', {
         setTimeout(() => {
             calculateAllProcessTotals(frm);
             recalculateOperationsCost(frm);
+        }, 500);
+    },
+
+    estimation_items_add: function(frm, cdt, cdn) {
+        // Refresh calculations when items are added
+        setTimeout(() => {
+            frm.reload_doc();
+        }, 500);
+    },
+
+    estimation_items_remove: function(frm, cdt, cdn) {
+        // Refresh calculations when items are removed
+        setTimeout(() => {
+            frm.reload_doc();
         }, 500);
     }
 });
@@ -147,81 +104,80 @@ frappe.ui.form.on("Estimation Process", {
     }
 });
 
+// Handle changes in estimation items child table
+frappe.ui.form.on("Work Order Estimation Item", {
+    item: function(frm, cdt, cdn) {
+        // Auto-fetch item details if needed
+        calculateItemMetrics(frm, cdt, cdn);
+    },
+    
+    paper_type: function(frm, cdt, cdn) {
+        // Auto-fetch paper type details if needed
+        let row = locals[cdt][cdn];
+        if (row.paper_type) {
+            frappe.call({
+                method: 'frappe.client.get_value',
+                args: {
+                    doctype: 'Item',
+                    fieldname: 'valuation_rate',
+                    filters: {'name': row.paper_type}
+                },
+                callback: function(r) {
+                    if (r.message && r.message.valuation_rate) {
+                        frappe.model.set_value(cdt, cdn, 'rate_per_kg', r.message.valuation_rate);
+                        calculateItemMetrics(frm, cdt, cdn);
+                    }
+                }
+            });
+        }
+    },
+    
+    quantity: function(frm, cdt, cdn) {
+        calculateItemMetrics(frm, cdt, cdn);
+    },
+    
+    gsm: function(frm, cdt, cdn) {
+        calculateItemMetrics(frm, cdt, cdn);
+    },
+    
+    length_cm: function(frm, cdt, cdn) {
+        calculateItemMetrics(frm, cdt, cdn);
+    },
+    
+    width_cm: function(frm, cdt, cdn) {
+        calculateItemMetrics(frm, cdt, cdn);
+    },
+    
+    rate_per_kg: function(frm, cdt, cdn) {
+        calculateItemMetrics(frm, cdt, cdn);
+    },
+    
+    waste_percentage: function(frm, cdt, cdn) {
+        calculateItemMetrics(frm, cdt, cdn);
+    }
+});
+
 function addActionButtons(frm) {
     // Clear existing buttons
     frm.page.clear_actions();
     
+    // Add Estimation Item Dialog button
+    frm.add_custom_button(__('➕ Add Estimation Item'), function() {
+        showAddEstimationItemDialog(frm);
+    }, __('Items'));
+    
     // Refresh Calculations button (always visible)
     frm.add_custom_button(__('🔄 Refresh Calculations'), function() {
-        frappe.call({
-            method: 'work_order_estimations.api.refresh_calculations',
-            args: {
-                doctype: frm.doctype,
-                docname: frm.docname
-            },
-            callback: function(r) {
-                if (r.message && r.message.success) {
-                    frappe.msgprint(__('Calculations refreshed successfully!'));
-                    frm.reload_doc();
-                }
-            }
-        });
+        frm.reload_doc();
+        frappe.msgprint(__('Calculations refreshed successfully!'));
     }, __('Actions'));
-    
-    // Populate BOM from Default button (when paper_type is selected but no BOM)
-    if (frm.doc.paper_type && !frm.doc.default_bom) {
-        frm.add_custom_button(__('🔗 Populate BOM from Default'), function() {
-            frappe.call({
-                method: 'work_order_estimations.api.populate_bom_from_default',
-                args: {
-                    doctype: frm.doctype,
-                    docname: frm.docname
-                },
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        frappe.msgprint(__('BOM populated from default successfully!'));
-                        frm.reload_doc();
-                    }
-                }
-            });
-        }, __('Breakdown'));
-    }
-    
-    // Update BOM Costs button (only when BOM is selected)
-    if (frm.doc.default_bom) {
-        frm.add_custom_button(__('📊 Update BOM Costs'), function() {
-            frappe.call({
-                method: 'work_order_estimations.api.update_bom_costs',
-                args: {
-                    doctype: frm.doctype,
-                    docname: frm.docname
-                },
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        frappe.msgprint(__('BOM costs updated successfully!'));
-                        frm.reload_doc();
-                    }
-                }
-            });
-        }, __('Breakdown'));
-    }
     
     // Calculation buttons in Breakdown section
     if (frm.doc.estimation_processes && frm.doc.estimation_processes.length > 0) {
         frm.add_custom_button(__('🔄 Recalculate Operations Cost'), function() {
-            frappe.call({
-                method: 'work_order_estimations.api.recalculate_operations_cost',
-                args: {
-                    doctype: frm.doctype,
-                    docname: frm.docname
-                },
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        frappe.msgprint(__('Operations cost recalculated successfully!'));
-                        frm.reload_doc();
-                    }
-                }
-            });
+            calculateAllProcessTotals(frm);
+            recalculateOperationsCost(frm);
+            frappe.msgprint(__('Operations cost recalculated successfully!'));
         }, __('Breakdown'));
         
         // Manual Calculate All Process Totals button
@@ -232,57 +188,34 @@ function addActionButtons(frm) {
         }, __('Breakdown'));
     }
     
-    // Weight Calculation Breakdown button (for debugging)
-    if (frm.doc.gsm && frm.doc.length_cm && frm.doc.width_cm) {
-        frm.add_custom_button(__('🧮 Weight Calculation Breakdown'), function() {
-            frappe.call({
-                method: 'work_order_estimations.api.get_weight_calculation_breakdown',
-                args: {
-                    doctype: frm.doctype,
-                    docname: frm.docname
-                },
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        let breakdown = r.message.breakdown;
-                        let message = `
-                            <h4>Weight Calculation Breakdown</h4>
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <tr><td><strong>Area (cm²):</strong></td><td>${breakdown.area_cm2}</td></tr>
-                                <tr><td><strong>Area (m²):</strong></td><td>${breakdown.area_m2}</td></tr>
-                                <tr><td><strong>Weight (g):</strong></td><td>${breakdown.weight_g}</td></tr>
-                                <tr><td><strong>Weight (kg):</strong></td><td>${breakdown.weight_kg}</td></tr>
-                                <tr><td><strong>Calculated Weight (kg):</strong></td><td>${breakdown.calculated_weight_kg}</td></tr>
-                                <tr><td><strong>Difference:</strong></td><td>${breakdown.difference}</td></tr>
-                            </table>
-                        `;
-                        frappe.msgprint({
-                            title: __('Weight Calculation Breakdown'),
-                            message: message,
-                            indicator: 'blue'
-                        });
-                    }
+    // Complete Estimation button (for Draft status)
+    if (frm.doc.status === 'Draft') {
+        frm.add_custom_button(__('✅ Complete Estimation'), function() {
+            frappe.confirm(
+                __('Are you sure you want to mark this estimation as done? This will make all fields read-only.'),
+                function() {
+                    frm.set_value('status', 'Estimation Done');
+                    frm.save().then(() => {
+                        frappe.msgprint(__('Estimation completed successfully!'));
+                        frm.reload_doc();
+                    });
                 }
-            });
-        }, __('Breakdown'));
+            );
+        }, __('Actions'));
     }
     
-    // Estimation Done button (only for From Quotation status)
-    if (frm.doc.status === 'From Quotation') {
-        frm.add_custom_button(__('✅ Estimation Done'), function() {
+    // Create Quotation button (only for Estimation Done status)
+    if (frm.doc.status === 'Estimation Done') {
+        frm.add_custom_button(__('📋 Create Quotation'), function() {
             frappe.confirm(
-                __('Are you sure you want to mark this estimation as done? This will update the quotation with calculated costs.'),
+                __('Are you sure you want to create a quotation from this estimation?'),
                 function() {
                     frappe.call({
-                        method: 'frappe.client.set_value',
-                        args: {
-                            doctype: frm.doctype,
-                            name: frm.docname,
-                            fieldname: 'status',
-                            value: 'Estimation Done'
-                        },
+                        method: 'create_quotation',
+                        doc: frm.doc,
                         callback: function(r) {
                             if (r.message) {
-                                frappe.msgprint(__('Estimation marked as done! Quotation has been updated with calculated costs.'));
+                                frappe.msgprint(__('Quotation {0} created successfully!').format(r.message));
                                 frm.reload_doc();
                             }
                         }
@@ -292,159 +225,16 @@ function addActionButtons(frm) {
         }, __('Actions'));
     }
     
-    // Create Sales Order button (only for Converted to Quotation status)
-    if (frm.doc.status === 'Converted to Quotation' && frm.doc.quotation_reference) {
-        frm.add_custom_button(__('📝 Create Sales Order'), function() {
+    // Reset to Draft button (for Estimation Done status)
+    if (frm.doc.status === 'Estimation Done' && !frm.doc.quotation_reference) {
+        frm.add_custom_button(__('🔄 Reset to Draft'), function() {
             frappe.confirm(
-                __('Are you sure you want to create a Sales Order from the quotation?'),
+                __('Are you sure you want to reset this estimation to draft? This will make fields editable again.'),
                 function() {
-                    frappe.call({
-                        method: 'work_order_estimations.api.create_sales_order_from_quotation',
-                        args: {
-                            doctype: frm.doctype,
-                            docname: frm.docname,
-                            quotation_name: frm.doc.quotation_reference
-                        },
-                        callback: function(r) {
-                            if (r.message && r.message.success) {
-                                frappe.msgprint(__('Sales Order {0} created successfully!').format(r.message.sales_order_name));
-                                frm.reload_doc();
-                            }
-                        }
-                    });
-                }
-            );
-        }, __('Actions'));
-    }
-    
-    // Create Work Order button (only for Sales Order Created status)
-    if (frm.doc.status === 'Sales Order Created' && frm.doc.sales_order_reference) {
-        frm.add_custom_button(__('⚙️ Create Work Order'), function() {
-            frappe.confirm(
-                __('Are you sure you want to create a Work Order for production?'),
-                function() {
-                    frappe.call({
-                        method: 'work_order_estimations.api.create_work_order_from_sales_order',
-                        args: {
-                            doctype: frm.doctype,
-                            docname: frm.docname,
-                            sales_order_name: frm.doc.sales_order_reference
-                        },
-                        callback: function(r) {
-                            if (r.message && r.message.success) {
-                                frappe.msgprint(__('Work Order {0} created successfully!').format(r.message.work_order_name));
-                                frm.reload_doc();
-                            }
-                        }
-                    });
-                }
-            );
-        }, __('Actions'));
-    }
-    
-    // Create Stock Entries button (only for Work Order Created status)
-    if (frm.doc.status === 'Work Order Created' && frm.doc.work_order_reference) {
-        frm.add_custom_button(__('📦 Create Stock Entries'), function() {
-            frappe.confirm(
-                __('Are you sure you want to create Stock Entries for the completed Work Order?'),
-                function() {
-                    frappe.call({
-                        method: 'work_order_estimations.api.create_stock_entries_from_work_order',
-                        args: {
-                            doctype: frm.doctype,
-                            docname: frm.docname,
-                            work_order_name: frm.doc.work_order_reference
-                        },
-                        callback: function(r) {
-                            if (r.message && r.message.success) {
-                                frappe.msgprint(__('Stock Entries created successfully!'));
-                                frm.reload_doc();
-                            }
-                        }
-                    });
-                }
-            );
-        }, __('Actions'));
-    }
-    
-    // Generate PDF Report button (for all statuses except Draft)
-    if (frm.doc.status && frm.doc.status !== 'Draft') {
-        frm.add_custom_button(__('📄 Generate PDF Report'), function() {
-            frappe.show_alert(__('Generating PDF...'), 3);
-            frappe.call({
-                method: 'work_order_estimations.api.generate_pdf_report',
-                args: {
-                    doctype: frm.doctype,
-                    docname: frm.docname
-                },
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        window.open(r.message.pdf_url, '_blank');
-                    }
-                },
-                error: function(r) {
-                    frappe.msgprint(__('Error generating PDF: ') + (r.responseJSON ? r.responseJSON.message : 'Unknown error'));
-                }
-            });
-        }, __('Actions'));
-    }
-    
-    // Create Sample BOM button (for all statuses)
-    frm.add_custom_button(__('🏗️ Create Sample BOM'), function() {
-        frappe.confirm(
-            __('Do you want to create a sample BOM for the selected paper type?'),
-            function() {
-                frappe.call({
-                    method: 'work_order_estimations.api.create_sample_bom',
-                    args: {
-                        doctype: frm.doctype,
-                        docname: frm.docname
-                    },
-                    callback: function(r) {
-                        if (r.message && r.message.success) {
-                            frappe.msgprint(__('Sample BOM created successfully!'));
-                        }
-                    }
-                });
-            }
-        );
-    }, __('Breakdown'));
-    
-    // Submit button (for Draft status)
-    if (frm.doc.status === 'Draft' && !frm.doc.docstatus) {
-        frm.add_custom_button(__('📤 Submit'), function() {
-            frappe.call({
-                method: 'work_order_estimations.api.submit_estimation',
-                args: {
-                    doctype: frm.doctype,
-                    docname: frm.docname
-                },
-                callback: function(r) {
-                    if (r.message && r.message.success) {
+                    frm.set_value('status', 'Draft');
+                    frm.save().then(() => {
+                        frappe.msgprint(__('Estimation reset to draft successfully!'));
                         frm.reload_doc();
-                    }
-                }
-            });
-        }, __('Actions'));
-    }
-    
-    // Cancel button (for Draft status)
-    if (frm.doc.status === 'Draft' && !frm.doc.docstatus) {
-        frm.add_custom_button(__('❌ Cancel Estimation'), function() {
-            frappe.confirm(
-                __('Are you sure you want to cancel this estimation?'),
-                function() {
-                    frappe.call({
-                        method: 'work_order_estimations.api.cancel_estimation',
-                        args: {
-                            doctype: frm.doctype,
-                            docname: frm.docname
-                        },
-                        callback: function(r) {
-                            if (r.message && r.message.success) {
-                                frm.reload_doc();
-                            }
-                        }
                     });
                 }
             );
@@ -452,8 +242,160 @@ function addActionButtons(frm) {
     }
 }
 
+function showAddEstimationItemDialog(frm) {
+    let dialog = new frappe.ui.Dialog({
+        title: __('Add Estimation Item'),
+        fields: [
+            {
+                label: __('Item'),
+                fieldname: 'item',
+                fieldtype: 'Link',
+                options: 'Item',
+                reqd: 1,
+                description: __('Select the item to be produced')
+            },
+            {
+                fieldtype: 'Column Break'
+            },
+            {
+                label: __('Paper Type'),
+                fieldname: 'paper_type',
+                fieldtype: 'Link',
+                options: 'Item',
+                reqd: 1,
+                description: __('Select paper type from Item Master')
+            },
+            {
+                fieldtype: 'Section Break'
+            },
+            {
+                label: __('Quantity (Pieces)'),
+                fieldname: 'quantity',
+                fieldtype: 'Int',
+                reqd: 1,
+                default: 1000,
+                description: __('Number of pieces to be produced')
+            },
+            {
+                fieldtype: 'Column Break'
+            },
+            {
+                label: __('GSM (Grams per Square Meter)'),
+                fieldname: 'gsm',
+                fieldtype: 'Int',
+                reqd: 1,
+                default: 80,
+                description: __('Paper weight in grams per square meter')
+            },
+            {
+                fieldtype: 'Section Break'
+            },
+            {
+                label: __('Length (cm)'),
+                fieldname: 'length_cm',
+                fieldtype: 'Float',
+                reqd: 1,
+                default: 21.0,
+                description: __('Length of paper in centimeters')
+            },
+            {
+                fieldtype: 'Column Break'
+            },
+            {
+                label: __('Width (cm)'),
+                fieldname: 'width_cm',
+                fieldtype: 'Float',
+                reqd: 1,
+                default: 29.7,
+                description: __('Width of paper in centimeters')
+            },
+            {
+                fieldtype: 'Section Break'
+            },
+            {
+                label: __('Rate per KG'),
+                fieldname: 'rate_per_kg',
+                fieldtype: 'Currency',
+                reqd: 1,
+                description: __('Cost per kilogram of paper')
+            },
+            {
+                fieldtype: 'Column Break'
+            },
+            {
+                label: __('Finish'),
+                fieldname: 'finish',
+                fieldtype: 'Select',
+                options: 'Matte\nGlossy\nSatin\nUncoated',
+                default: 'Uncoated',
+                description: __('Type of finish applied to paper')
+            },
+            {
+                fieldtype: 'Section Break'
+            },
+            {
+                label: __('Waste Percentage (%)'),
+                fieldname: 'waste_percentage',
+                fieldtype: 'Percent',
+                default: 5,
+                description: __('Percentage of paper waste during production')
+            }
+        ],
+        primary_action_label: __('Add Item'),
+        primary_action(values) {
+            // Validate required fields
+            if (!values.item || !values.paper_type || !values.quantity || !values.gsm || 
+                !values.length_cm || !values.width_cm || !values.rate_per_kg) {
+                frappe.msgprint(__('Please fill all required fields'));
+                return;
+            }
+            
+            // Add item to child table
+            frappe.call({
+                method: 'add_estimation_item',
+                doc: frm.doc,
+                args: {
+                    item_data: values
+                },
+                callback: function(r) {
+                    if (r.message && r.message.status === 'success') {
+                        frappe.msgprint(r.message.message);
+                        frm.reload_doc();
+                        dialog.hide();
+                    } else if (r.message && r.message.status === 'error') {
+                        frappe.msgprint(r.message.message);
+                    }
+                }
+            });
+        }
+    });
+    
+    // Auto-fetch rate when paper type is selected
+    dialog.fields_dict.paper_type.df.onchange = function() {
+        let paper_type = dialog.get_value('paper_type');
+        if (paper_type) {
+            frappe.call({
+                method: 'frappe.client.get_value',
+                args: {
+                    doctype: 'Item',
+                    fieldname: 'valuation_rate',
+                    filters: {'name': paper_type}
+                },
+                callback: function(r) {
+                    if (r.message && r.message.valuation_rate) {
+                        dialog.set_value('rate_per_kg', r.message.valuation_rate);
+                    }
+                }
+            });
+        }
+    };
+    
+    dialog.show();
+}
+
 function addCustomDashboard(frm) {
     // Add custom dashboard section
+    let totalItems = frm.doc.estimation_items ? frm.doc.estimation_items.length : 0;
     let dashboard_html = `
         <div class="work-order-estimation-dashboard">
             <div class="dashboard-header">
@@ -465,16 +407,16 @@ function addCustomDashboard(frm) {
             
             <div class="dashboard-stats">
                 <div class="stat-item">
-                    <div class="stat-label">Quantity</div>
-                    <div class="stat-value" id="dashboard-quantity">${frm.doc.quantity || 0}</div>
+                    <div class="stat-label">Items</div>
+                    <div class="stat-value" id="dashboard-items">${totalItems}</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">Total Weight</div>
-                    <div class="stat-value" id="dashboard-weight">${frm.doc.total_weight_kg ? frm.doc.total_weight_kg.toFixed(3) : 0} kg</div>
+                    <div class="stat-label">Paper Cost</div>
+                    <div class="stat-value" id="dashboard-paper-cost">${frm.doc.total_paper_cost ? format_currency(frm.doc.total_paper_cost) : '0'}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Total Cost</div>
-                    <div class="stat-value" id="dashboard-cost">${frm.doc.total_cost ? frappe.format_currency(frm.doc.total_cost) : '0'}</div>
+                    <div class="stat-value" id="dashboard-cost">${frm.doc.total_cost ? format_currency(frm.doc.total_cost) : '0'}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Profit Margin</div>
@@ -482,19 +424,27 @@ function addCustomDashboard(frm) {
                 </div>
             </div>
             
-            <div class="cost-breakdown" id="cost-breakdown-section" style="display: none;">
-                <h4>💰 Cost Breakdown</h4>
+            <div class="cost-breakdown" id="cost-breakdown-section" style="display: ${((frm.doc.total_paper_cost || 0) + (frm.doc.total_cost_for_operations || 0)) > 0 ? 'block' : 'none'};">
+                <h4>💰 Cost Analysis</h4>
                 <div class="cost-item">
                     <span>Paper Cost:</span>
-                    <span id="paper-cost-display">0</span>
+                    <span id="paper-cost-display">${frm.doc.total_paper_cost ? format_currency(frm.doc.total_paper_cost) : '0'}</span>
                 </div>
                 <div class="cost-item">
                     <span>Operations Cost:</span>
-                    <span id="operations-cost-display">0</span>
+                    <span id="operations-cost-display">${frm.doc.total_cost_for_operations ? format_currency(frm.doc.total_cost_for_operations) : '0'}</span>
+                </div>
+                <div class="cost-item subtotal">
+                    <span>Subtotal:</span>
+                    <span id="subtotal-display">${format_currency((frm.doc.total_paper_cost || 0) + (frm.doc.total_cost_for_operations || 0))}</span>
+                </div>
+                <div class="cost-item">
+                    <span>Profit Margin (${frm.doc.profit_margin || 25}%):</span>
+                    <span id="margin-display">${frm.doc.margin_amount ? format_currency(frm.doc.margin_amount) : '0'}</span>
                 </div>
                 <div class="cost-item total">
-                    <span>Total Cost:</span>
-                    <span id="total-cost-display">0</span>
+                    <span>Total with Margin:</span>
+                    <span id="total-with-margin-display">${format_currency((frm.doc.total_cost || 0) + (frm.doc.margin_amount || 0))}</span>
                 </div>
             </div>
         </div>
@@ -525,11 +475,8 @@ function addCustomDashboard(frm) {
             text-transform: uppercase;
         }
         .status-draft { background: #6c757d; color: white; }
-        .status-sent { background: #007bff; color: white; }
-        .status-converted-to-quotation { background: #28a745; color: white; }
-        .status-sales-order-created { background: #17a2b8; color: white; }
-        .status-work-order-created { background: #ffc107; color: black; }
-        .status-production-completed { background: #28a745; color: white; }
+        .status-estimation-done { background: #007bff; color: white; }
+        .status-quotation-created { background: #28a745; color: white; }
         .status-cancelled { background: #dc3545; color: white; }
         
         .dashboard-stats {
@@ -573,6 +520,11 @@ function addCustomDashboard(frm) {
             padding: 8px 0;
             border-bottom: 1px solid #f1f3f4;
         }
+        .cost-item.subtotal {
+            border-top: 1px solid #28a745;
+            font-weight: 600;
+            color: #495057;
+        }
         .cost-item.total {
             border-top: 2px solid #28a745;
             border-bottom: none;
@@ -597,37 +549,18 @@ function addDocumentFlowTracking(frm) {
         <div class="document-flow-tracking">
             <h4>📋 Document Flow</h4>
             <div class="flow-items">
-                <div class="flow-item ${frm.doc.status === 'From Quotation' ? 'active' : ''}">
-                    <div class="flow-icon">📋</div>
-                    <div class="flow-text">From Quotation</div>
-                    ${frm.doc.quotation_reference ? `<div class="flow-ref">${frm.doc.quotation_reference}</div>` : ''}
-                </div>
                 <div class="flow-item ${frm.doc.status === 'Draft' ? 'active' : ''}">
                     <div class="flow-icon">📝</div>
-                    <div class="flow-text">Estimation Created</div>
+                    <div class="flow-text">Draft</div>
                 </div>
-                <div class="flow-item ${frm.doc.status === 'Sent' ? 'active' : ''}">
-                    <div class="flow-icon">📤</div>
-                    <div class="flow-text">Sent to Client</div>
+                <div class="flow-item ${frm.doc.status === 'Estimation Done' ? 'active' : ''}">
+                    <div class="flow-icon">✅</div>
+                    <div class="flow-text">Estimation Done</div>
                 </div>
-                <div class="flow-item ${frm.doc.status === 'Converted to Quotation' ? 'active' : ''}">
+                <div class="flow-item ${frm.doc.status === 'Quotation Created' ? 'active' : ''}">
                     <div class="flow-icon">📋</div>
                     <div class="flow-text">Quotation Created</div>
                     ${frm.doc.quotation_reference ? `<div class="flow-ref">${frm.doc.quotation_reference}</div>` : ''}
-                </div>
-                <div class="flow-item ${frm.doc.status === 'Sales Order Created' ? 'active' : ''}">
-                    <div class="flow-icon">📝</div>
-                    <div class="flow-text">Sales Order Created</div>
-                    ${frm.doc.sales_order_reference ? `<div class="flow-ref">${frm.doc.sales_order_reference}</div>` : ''}
-                </div>
-                <div class="flow-item ${frm.doc.status === 'Work Order Created' ? 'active' : ''}">
-                    <div class="flow-icon">⚙️</div>
-                    <div class="flow-text">Work Order Created</div>
-                    ${frm.doc.work_order_reference ? `<div class="flow-ref">${frm.doc.work_order_reference}</div>` : ''}
-                </div>
-                <div class="flow-item ${frm.doc.status === 'Production Completed' ? 'active' : ''}">
-                    <div class="flow-icon">✅</div>
-                    <div class="flow-text">Production Completed</div>
                 </div>
             </div>
         </div>
@@ -691,17 +624,19 @@ function addDocumentFlowTracking(frm) {
 
 function updateDashboard(frm) {
     try {
+        let totalItems = frm.doc.estimation_items ? frm.doc.estimation_items.length : 0;
+        
         // Update dashboard values
-        if (document.getElementById('dashboard-quantity')) {
-            document.getElementById('dashboard-quantity').textContent = frm.doc.quantity || 0;
+        if (document.getElementById('dashboard-items')) {
+            document.getElementById('dashboard-items').textContent = totalItems;
         }
-        if (document.getElementById('dashboard-weight')) {
-            document.getElementById('dashboard-weight').textContent = 
-                (frm.doc.total_weight_kg ? frm.doc.total_weight_kg.toFixed(3) : 0) + ' kg';
+        if (document.getElementById('dashboard-paper-cost')) {
+            document.getElementById('dashboard-paper-cost').textContent = 
+                frm.doc.total_paper_cost ? format_currency(frm.doc.total_paper_cost) : '0';
         }
         if (document.getElementById('dashboard-cost')) {
             document.getElementById('dashboard-cost').textContent = 
-                frm.doc.total_cost ? frappe.format_currency(frm.doc.total_cost) : '0';
+                frm.doc.total_cost ? format_currency(frm.doc.total_cost) : '0';
         }
         if (document.getElementById('dashboard-margin')) {
             document.getElementById('dashboard-margin').textContent = (frm.doc.profit_margin || 25) + '%';
@@ -709,22 +644,23 @@ function updateDashboard(frm) {
         
         // Update cost breakdown
         if (document.getElementById('cost-breakdown-section')) {
-            let totalCost = frm.doc.total_cost || 0;
             let paperCost = frm.doc.total_paper_cost || 0;
             let operationsCost = frm.doc.total_cost_for_operations || 0;
+            let subtotal = paperCost + operationsCost;
+            let marginAmount = frm.doc.margin_amount || 0;
+            let totalWithMargin = subtotal + marginAmount;
             
-            if (totalCost > 0) {
+            if (subtotal > 0) {
                 document.getElementById('cost-breakdown-section').style.display = 'block';
-                document.getElementById('paper-cost-display').textContent = frappe.format_currency(paperCost);
-                document.getElementById('operations-cost-display').textContent = frappe.format_currency(operationsCost);
-                document.getElementById('total-cost-display').textContent = frappe.format_currency(totalCost);
+                document.getElementById('paper-cost-display').textContent = format_currency(paperCost);
+                document.getElementById('operations-cost-display').textContent = format_currency(operationsCost);
+                document.getElementById('subtotal-display').textContent = format_currency(subtotal);
+                document.getElementById('margin-display').textContent = format_currency(marginAmount);
+                document.getElementById('total-with-margin-display').textContent = format_currency(totalWithMargin);
             } else {
                 document.getElementById('cost-breakdown-section').style.display = 'none';
             }
         }
-        
-        // Update HTML field dashboard values
-        updateHTMLFieldDashboard(frm);
         
         // Update status badges
         let statusElements = document.querySelectorAll('.status-badge');
@@ -733,92 +669,8 @@ function updateDashboard(frm) {
             element.textContent = frm.doc.status || 'Draft';
         });
         
-        // Update flow tracking
-        updateFlowTracking(frm);
-        
     } catch (error) {
         console.log('Dashboard update error:', error);
-    }
-}
-
-function updateHTMLFieldDashboard(frm) {
-    try {
-        // Update HTML field dashboard values
-        if (document.getElementById('dashboard-quantity')) {
-            document.getElementById('dashboard-quantity').textContent = frm.doc.quantity || 0;
-        }
-        if (document.getElementById('dashboard-weight')) {
-            document.getElementById('dashboard-weight').textContent = (frm.doc.total_weight_kg || 0) + ' kg';
-        }
-        if (document.getElementById('dashboard-total-cost')) {
-            document.getElementById('dashboard-total-cost').textContent = frm.doc.total_cost || 0;
-        }
-        if (document.getElementById('dashboard-margin')) {
-            document.getElementById('dashboard-margin').textContent = (frm.doc.profit_margin || 25) + '%';
-        }
-        if (document.getElementById('dashboard-paper-cost')) {
-            document.getElementById('dashboard-paper-cost').textContent = frm.doc.total_paper_cost || 0;
-        }
-        if (document.getElementById('dashboard-operations-cost')) {
-            document.getElementById('dashboard-operations-cost').textContent = frm.doc.total_cost_for_operations || 0;
-        }
-        if (document.getElementById('dashboard-total-cost-breakdown')) {
-            document.getElementById('dashboard-total-cost-breakdown').textContent = frm.doc.total_cost || 0;
-        }
-        if (document.getElementById('dashboard-status')) {
-            document.getElementById('dashboard-status').textContent = 'Status: ' + (frm.doc.status || 'Draft');
-        }
-    } catch (error) {
-        console.log('HTML Field Dashboard update error:', error);
-    }
-}
-
-function updateFlowTracking(frm) {
-    try {
-        let flowItems = document.querySelectorAll('.flow-item');
-        flowItems.forEach(function(item, index) {
-            let statuses = ['From Quotation', 'Draft', 'Sent', 'Converted to Quotation', 'Sales Order Created', 'Work Order Created', 'Production Completed'];
-            let currentStatus = frm.doc.status || 'From Quotation';
-            let currentIndex = statuses.indexOf(currentStatus);
-            
-            if (index <= currentIndex) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
-    } catch (error) {
-        console.log('Flow tracking update error:', error);
-    }
-}
-
-
-
-function updateBOMDetails(frm) {
-    // Update BOM details and calculations
-    if (frm.doc.default_bom) {
-        frappe.call({
-            method: 'work_order_estimations.api.get_bom_details',
-            args: {
-                bom_no: frm.doc.default_bom
-            },
-            callback: function(r) {
-                if (r.message && r.message.success) {
-                    let bomData = r.message.bom_data;
-                    
-                    // Update BOM-related fields
-                    if (bomData.total_cost && bomData.quantity) {
-                        let bomCostPerUnit = bomData.total_cost / bomData.quantity;
-                        frm.set_value('total_cost', bomCostPerUnit * frm.doc.quantity);
-                        frm.set_value('cost_per_unit', bomCostPerUnit);
-                        frm.refresh_field('total_cost');
-                        frm.refresh_field('cost_per_unit');
-                    }
-                    
-                    frappe.msgprint(__('BOM details updated successfully!'));
-                }
-            }
-        });
     }
 }
 
@@ -864,10 +716,19 @@ function recalculateOperationsCost(frm) {
     
     frm.set_value('total_cost', totalCost);
     
+    // Calculate total quantity from all items
+    let totalQuantity = 0;
+    if (frm.doc.estimation_items) {
+        frm.doc.estimation_items.forEach(function(item) {
+            if (item.quantity) {
+                totalQuantity += parseFloat(item.quantity) || 0;
+            }
+        });
+    }
+    
     // Update cost per unit
-    let quantity = parseFloat(frm.doc.quantity) || 0;
-    if (quantity > 0) {
-        frm.set_value('cost_per_unit', totalCost / quantity);
+    if (totalQuantity > 0) {
+        frm.set_value('cost_per_unit', totalCost / totalQuantity);
     }
     
     // Refresh fields
@@ -879,4 +740,88 @@ function recalculateOperationsCost(frm) {
     updateDashboard(frm);
 }
 
+function calculateItemMetrics(frm, cdt, cdn) {
+    // Calculate paper metrics for a specific estimation item row
+    let row = locals[cdt][cdn];
+    
+    if (!row.gsm || !row.length_cm || !row.width_cm || !row.quantity) {
+        return;
+    }
+    
+    // Calculate weight per piece (GSM * length * width / 10000) / 1000
+    let area_sqm = (row.length_cm * row.width_cm) / 10000;  // Convert cm² to m²
+    let weight_per_piece_kg = (row.gsm * area_sqm) / 1000;  // Convert grams to kg
+    
+    frappe.model.set_value(cdt, cdn, 'weight_per_piece_kg', weight_per_piece_kg);
+    
+    // Calculate pieces per kg
+    if (weight_per_piece_kg > 0) {
+        frappe.model.set_value(cdt, cdn, 'pieces_per_kg', 1 / weight_per_piece_kg);
+    }
+    
+    // Calculate net weight needed
+    let net_weight_kg = weight_per_piece_kg * row.quantity;
+    frappe.model.set_value(cdt, cdn, 'net_weight_kg', net_weight_kg);
+    
+    // Calculate waste weight
+    let waste_percentage = row.waste_percentage || 0;
+    let waste_kg = net_weight_kg * (waste_percentage / 100);
+    frappe.model.set_value(cdt, cdn, 'waste_kg', waste_kg);
+    
+    // Calculate total weight including waste
+    let total_weight_kg = net_weight_kg + waste_kg;
+    frappe.model.set_value(cdt, cdn, 'total_weight_kg', total_weight_kg);
+    
+    // Calculate costs if rate is available
+    if (row.rate_per_kg && weight_per_piece_kg && total_weight_kg) {
+        // Calculate cost per piece
+        let cost_per_piece = weight_per_piece_kg * row.rate_per_kg;
+        frappe.model.set_value(cdt, cdn, 'cost_per_piece', cost_per_piece);
+        
+        // Calculate total paper cost
+        let total_paper_cost = total_weight_kg * row.rate_per_kg;
+        frappe.model.set_value(cdt, cdn, 'total_paper_cost', total_paper_cost);
+    }
+    
+    // Refresh the form to update totals
+    setTimeout(() => {
+        frm.save();
+    }, 1000);
+}
 
+function setFieldsReadOnly(frm) {
+    // Make fields read-only when status is "Estimation Done" or "Quotation Created"
+    let isReadOnly = (frm.doc.status === 'Estimation Done' || frm.doc.status === 'Quotation Created');
+    
+    if (isReadOnly) {
+        // Make main fields read-only
+        frm.set_df_property('client_name', 'read_only', 1);
+        frm.set_df_property('project_name', 'read_only', 1);
+        frm.set_df_property('delivery_date', 'read_only', 1);
+        frm.set_df_property('urgency_level', 'read_only', 1);
+        frm.set_df_property('sales_price', 'read_only', 1);
+        frm.set_df_property('profit_margin', 'read_only', 1);
+        frm.set_df_property('notes', 'read_only', 1);
+        
+        // Make child tables read-only
+        frm.set_df_property('estimation_items', 'read_only', 1);
+        frm.set_df_property('estimation_processes', 'read_only', 1);
+        
+        // Hide Add Item button when read-only
+        frm.remove_custom_button('Add Estimation Item', 'Items');
+        
+    } else {
+        // Make fields editable when status is Draft
+        frm.set_df_property('client_name', 'read_only', 0);
+        frm.set_df_property('project_name', 'read_only', 0);
+        frm.set_df_property('delivery_date', 'read_only', 0);
+        frm.set_df_property('urgency_level', 'read_only', 0);
+        frm.set_df_property('sales_price', 'read_only', 0);
+        frm.set_df_property('profit_margin', 'read_only', 0);
+        frm.set_df_property('notes', 'read_only', 0);
+        
+        // Make child tables editable
+        frm.set_df_property('estimation_items', 'read_only', 0);
+        frm.set_df_property('estimation_processes', 'read_only', 0);
+    }
+}

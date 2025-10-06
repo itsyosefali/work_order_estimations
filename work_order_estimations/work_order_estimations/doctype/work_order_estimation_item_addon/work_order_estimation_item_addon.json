@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "creation": "2025-01-14 10:00:00.000000",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item",
+  "item_name",
+  "addon_type",
+  "wrapper_item",
+  "color_item",
+  "handle_item"
+ ],
+ "fields": [
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "addon_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Addon Type",
+   "options": "Wrapper\nColor\nHandle",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.addon_type==\"Wrapper\"",
+   "fieldname": "wrapper_item",
+   "fieldtype": "Link",
+   "label": "Wrapper Item",
+   "options": "Item"
+  },
+  {
+   "depends_on": "eval:doc.addon_type==\"Color\"",
+   "fieldname": "color_item",
+   "fieldtype": "Link",
+   "label": "Color",
+   "options": "Color"
+  },
+  {
+   "depends_on": "eval:doc.addon_type==\"Handle\"",
+   "fieldname": "handle_item",
+   "fieldtype": "Link",
+   "label": "Handle Item",
+   "options": "Item"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-14 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Work Order Estimations",
+ "name": "Work Order Estimation Item Addon",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

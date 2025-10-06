@@ -165,6 +165,53 @@ class WorkOrderEstimation(Document):
                 frappe.log_error(f"Error updating quotation with WOE reference: {str(e)}")
 
     @frappe.whitelist()
+    def create_estimation_item_addons(self, addon_data):
+        """Create estimation item addons via dialog"""
+        try:
+            # Parse addon data if it's a string
+            if isinstance(addon_data, str):
+                addon_data = json.loads(addon_data)
+            
+            # Validate that estimation items exist
+            if not self.estimation_items:
+                frappe.throw(_("Please add estimation items first before creating addons"))
+            
+            # Get item details for display name
+            item_name = ""
+            if addon_data.get("item"):
+                try:
+                    item = frappe.get_doc("Item", addon_data.get("item"))
+                    item_name = item.item_name or item.name
+                except:
+                    item_name = addon_data.get("item")
+            
+            # Add new row to estimation_item_addons
+            new_addon = self.append("estimation_item_addons", {
+                "item": addon_data.get("item"),
+                "item_name": item_name,
+                "addon_type": addon_data.get("addon_type"),
+                "wrapper_item": addon_data.get("wrapper_item"),
+                "color_item": addon_data.get("color_item"),
+                "handle_item": addon_data.get("handle_item")
+            })
+            
+            # Save the document
+            self.save()
+            
+            return {
+                "status": "success",
+                "message": _("Addon added successfully"),
+                "addon_name": new_addon.name
+            }
+            
+        except Exception as e:
+            frappe.log_error(f"Error adding estimation item addon: {str(e)}")
+            return {
+                "status": "error",
+                "message": _("Error adding addon: {0}").format(str(e))
+            }
+
+    @frappe.whitelist()
     def add_estimation_item(self, item_data):
         """Add a new estimation item via dialog"""
         try:

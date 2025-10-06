@@ -17,6 +17,8 @@
   "sales_price",
   "items_section",
   "estimation_items",
+  "addons_section",
+  "estimation_item_addons",
   "processes_section",
   "estimation_processes",
   "total_cost_for_operations",
@@ -188,6 +190,20 @@
    "fieldtype": "Table",
    "label": "Estimation Items",
    "options": "Work Order Estimation Item"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:!doc.docstatus",
+   "fieldname": "addons_section",
+   "fieldtype": "Section Break",
+   "label": "Item Addons"
+  },
+  {
+   "description": "Addons for estimation items (wrappers, colors, handles)",
+   "fieldname": "estimation_item_addons",
+   "fieldtype": "Table",
+   "label": "Estimation Item Addons",
+   "options": "Work Order Estimation Item Addon"
   },
   {
    "collapsible": 1,

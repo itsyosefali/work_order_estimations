@@ -17,6 +17,27 @@ frappe.ui.form.on('Work Order Estimation', {
         frm.add_custom_button(__('Add Item'), function() {
             show_add_item_dialog(frm);
         }, __('Actions'));
+        
+        // Add "Estimation Done" button if status is Draft
+        if (frm.doc.status === 'Draft') {
+            frm.add_custom_button(__('Mark as Estimation Done'), function() {
+                mark_estimation_done(frm);
+            }, __('Actions'));
+        }
+        
+        // Add "Convert to Quotation" button if status is Estimation Done
+        if (frm.doc.status === 'Estimation Done' && !frm.doc.quotation_reference) {
+            frm.add_custom_button(__('Convert to Quotation'), function() {
+                convert_to_quotation(frm);
+            }, __('Actions'));
+        }
+        
+        // Add "View Quotation" button if quotation is created
+        if (frm.doc.quotation_reference) {
+            frm.add_custom_button(__('View Quotation'), function() {
+                frappe.set_route('Form', 'Quotation', frm.doc.quotation_reference);
+            }, __('View'));
+        }
     },
     
     estimation_items: function(frm) {
@@ -63,7 +84,7 @@ function show_addon_dialog(frm) {
                 label: __('Addon Type'),
                 fieldname: 'addon_type',
                 fieldtype: 'Select',
-                options: 'Wrapper\nColor\nHandle',
+                options: 'Wrapper\nColor\nHandle\nAdd-on',
                 reqd: 1,
                 change: function() {
                     toggle_addon_fields(dialog);
@@ -89,6 +110,13 @@ function show_addon_dialog(frm) {
                 fieldtype: 'Link',
                 options: 'Item',
                 depends_on: 'eval:doc.addon_type=="Handle"'
+            },
+            {
+                label: __('Add-on Item'),
+                fieldname: 'addon_item',
+                fieldtype: 'Link',
+                options: 'Item',
+                depends_on: 'eval:doc.addon_type=="Add-on"'
             }
         ],
         primary_action_label: __('Add Addon'),
@@ -110,6 +138,7 @@ function toggle_addon_fields(dialog) {
     dialog.fields_dict.wrapper_item.df.depends_on = 'eval:false';
     dialog.fields_dict.color_item.df.depends_on = 'eval:false';
     dialog.fields_dict.handle_item.df.depends_on = 'eval:false';
+    dialog.fields_dict.addon_item.df.depends_on = 'eval:false';
     
     // Show the appropriate field based on addon type
     if (addon_type === 'Wrapper') {
@@ -118,6 +147,8 @@ function toggle_addon_fields(dialog) {
         dialog.fields_dict.color_item.df.depends_on = 'eval:true';
     } else if (addon_type === 'Handle') {
         dialog.fields_dict.handle_item.df.depends_on = 'eval:true';
+    } else if (addon_type === 'Add-on') {
+        dialog.fields_dict.addon_item.df.depends_on = 'eval:true';
     }
     
     dialog.refresh_fields();
@@ -143,6 +174,9 @@ function validate_addon_data(values) {
         return false;
     } else if (values.addon_type === 'Handle' && !values.handle_item) {
         frappe.msgprint(__('Please select a handle item'));
+        return false;
+    } else if (values.addon_type === 'Add-on' && !values.addon_item) {
+        frappe.msgprint(__('Please select an add-on item'));
         return false;
     }
     
@@ -254,4 +288,47 @@ function create_addon(frm, values) {
             }
         }
     });
+}
+
+function mark_estimation_done(frm) {
+    frappe.confirm(
+        __('Are you sure you want to mark this estimation as done?'),
+        function() {
+            frappe.call({
+                method: 'mark_estimation_done',
+                doc: frm.doc,
+                callback: function(r) {
+                    if (r.message && r.message.status === 'success') {
+                        frappe.msgprint(__('Estimation marked as done successfully'));
+                        frm.reload_doc();
+                    } else {
+                        frappe.msgprint(__('Error marking estimation as done: {0}').format(r.message.message || 'Unknown error'));
+                    }
+                }
+            });
+        }
+    );
+}
+
+function convert_to_quotation(frm) {
+    frappe.confirm(
+        __('Are you sure you want to convert this estimation to a quotation?'),
+        function() {
+            frappe.call({
+                method: 'create_quotation',
+                doc: frm.doc,
+                callback: function(r) {
+                    if (r) {
+                        frappe.msgprint(__('Quotation {0} created successfully!').format(r.message));
+                        frm.reload_doc();
+                        // Open the created quotation
+                        frappe.set_route('Form', 'Quotation', r.message);
+                    }
+                },
+                error: function(r) {
+                    frappe.msgprint(__('Error creating quotation'));
+                }
+            });
+        }
+    );
 }

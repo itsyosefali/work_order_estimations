@@ -11,7 +11,8 @@
   "addon_type",
   "wrapper_item",
   "color_item",
-  "handle_item"
+  "handle_item",
+  "addon_item"
  ],
  "fields": [
   {
@@ -29,14 +30,14 @@
    "label": "Item Name",
    "read_only": 1
   },
-  {
-   "fieldname": "addon_type",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Addon Type",
-   "options": "Wrapper\nColor\nHandle",
-   "reqd": 1
-  },
+ {
+  "fieldname": "addon_type",
+  "fieldtype": "Select",
+  "in_list_view": 1,
+  "label": "Addon Type",
+  "options": "Wrapper\nColor\nHandle\nAdd-on",
+  "reqd": 1
+ },
   {
    "depends_on": "eval:doc.addon_type==\"Wrapper\"",
    "fieldname": "wrapper_item",
@@ -51,14 +52,21 @@
    "label": "Color",
    "options": "Color"
   },
-  {
-   "depends_on": "eval:doc.addon_type==\"Handle\"",
-   "fieldname": "handle_item",
-   "fieldtype": "Link",
-   "label": "Handle Item",
-   "options": "Item"
-  }
- ],
+ {
+  "depends_on": "eval:doc.addon_type==\"Handle\"",
+  "fieldname": "handle_item",
+  "fieldtype": "Link",
+  "label": "Handle Item",
+  "options": "Item"
+ },
+ {
+  "depends_on": "eval:doc.addon_type==\"Add-on\"",
+  "fieldname": "addon_item",
+  "fieldtype": "Link",
+  "label": "Add-on Item",
+  "options": "Item"
+ }
+],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],

@@ -102,23 +102,66 @@ class WorkOrderEstimation(Document):
             quotation.party_name = self.client_name
             quotation.quotation_to = "Customer"
             quotation.transaction_date = frappe.utils.today()
-            quotation.valid_till = self.delivery_date
+            
+            # Set valid_till to delivery_date if it's in the future, otherwise 30 days from today
+            from frappe.utils import getdate, add_days
+            today = getdate(frappe.utils.today())
+            delivery_date = getdate(self.delivery_date) if self.delivery_date else None
+            
+            if delivery_date and delivery_date > today:
+                quotation.valid_till = self.delivery_date
+            else:
+                quotation.valid_till = add_days(today, 30)
+            
             quotation.custom_work_order_estimation_reference = self.name
             
-            # Add items from estimation items
+            # Set flags to prevent automatic price fetching and calculations
+            quotation.ignore_pricing_rule = 1
+            quotation.flags.ignore_pricing_rule = 1
+            
+            # Calculate total selling price including profit margin
+            # If sales_price is set, use it; otherwise calculate from costs + margin
+            if self.sales_price:
+                total_selling_price = self.sales_price
+            else:
+                total_selling_price = (self.total_cost or 0) + (self.margin_amount or 0)
+            
+            # Calculate total quantity from all estimation items
+            total_quantity = 0
+            if self.estimation_items:
+                for est_item in self.estimation_items:
+                    if est_item.quantity:
+                        total_quantity += est_item.quantity
+            
+            if total_quantity == 0:
+                frappe.throw(_("Total quantity cannot be zero. Please add items with valid quantities."))
+            
+            # Calculate rate per piece
+            rate_per_piece = total_selling_price / total_quantity
+            
+            # Add items to quotation
             if self.estimation_items:
                 for est_item in self.estimation_items:
                     if est_item.item and est_item.quantity:
+                        # Calculate amount for this item
+                        item_amount = rate_per_piece * est_item.quantity
+                        
                         quotation.append("items", {
                             "item_code": est_item.item,
                             "qty": est_item.quantity,
-                            "rate": est_item.cost_per_piece or 0,
+                            "rate": rate_per_piece,
+                            "amount": item_amount,
+                            "price_list_rate": rate_per_piece,
+                            "base_rate": rate_per_piece,
+                            "base_amount": item_amount,
                             "description": f"Printing job: {self.project_name} - {est_item.paper_type}",
                         })
             
+            # Save the quotation
+            quotation.flags.ignore_validate_update_after_submit = True
             quotation.insert()
             
-            # Update status
+            # Update status and reference
             self.status = "Quotation Created"
             self.quotation_reference = quotation.name
             self.save()
@@ -192,7 +235,8 @@ class WorkOrderEstimation(Document):
                 "addon_type": addon_data.get("addon_type"),
                 "wrapper_item": addon_data.get("wrapper_item"),
                 "color_item": addon_data.get("color_item"),
-                "handle_item": addon_data.get("handle_item")
+                "handle_item": addon_data.get("handle_item"),
+                "addon_item": addon_data.get("addon_item")
             })
             
             # Save the document
@@ -209,6 +253,29 @@ class WorkOrderEstimation(Document):
             return {
                 "status": "error",
                 "message": _("Error adding addon: {0}").format(str(e))
+            }
+
+    @frappe.whitelist()
+    def mark_estimation_done(self):
+        """Mark estimation as done (change status from Draft to Estimation Done)"""
+        try:
+            if self.status != "Draft":
+                frappe.throw(_("Only draft estimations can be marked as done."))
+            
+            # Change status to Estimation Done
+            self.status = "Estimation Done"
+            self.save()
+            
+            return {
+                "status": "success",
+                "message": _("Estimation marked as done successfully")
+            }
+            
+        except Exception as e:
+            frappe.log_error(f"Error marking estimation as done: {str(e)}")
+            return {
+                "status": "error",
+                "message": _("Error marking estimation as done: {0}").format(str(e))
             }
 
     @frappe.whitelist()
